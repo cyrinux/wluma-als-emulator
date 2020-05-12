@@ -1,10 +1,22 @@
-# Contrib to wluma
+# Fake light sensor
 
-## fake-light-sensor
+This is fake light sensor for those who don't get a builtin light sensor in there laptop.
 
-If you don't got a light sensor on your laptop, use webcam as a fake light sensor.
-Wluma will be able to read it by using the `--sensor=` parameter.
+Mainly done for Wluma and based on @maximbaz work.
+
+Wluma is a great project that set brighness based on luma from what you are watching, and ambiance light.
+See more [here](https://github.com/maximbaz/wluma).
+
+If you don't got a light sensor on your laptop, use your webcam as a fake light (lux) sensor.
+
+_Wluma_ will be able to read it by using the `--sensor=` parameter.
+
+## Installation
+
+Archlinux, from AUR use `fake-light-sensor-git`.
 
 ## Usage
 
-fake-light-sensor --help
+```bash
+fake-light-sensor [--help]
+```
