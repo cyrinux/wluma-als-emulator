@@ -10,7 +10,7 @@ See more [here](https://github.com/maximbaz/wluma).
 If you don't got a light sensor on your laptop, use your webcam as a fake light (lux) sensor.
 This will take a webcam capture with ffmpeg then approximate a lux value from this one.
 
-_Wluma_ will be able to read it by using the `--sensor=` parameter.
+_Wluma_ will be able to read it by using the `-l /tmp/fake_light_sensor` parameter.
 
 ## Requirement
 
