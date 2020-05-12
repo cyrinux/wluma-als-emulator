@@ -14,7 +14,7 @@ FAKE_SENSOR = "/tmp/fake_light_sensor"
 CAMERA = "/dev/video0"
 SLEEP_TIME = 10
 
-
+# Magic to lux from image
 def get_lightness(screenshot_cmd):
     f, path = tempfile.mkstemp()
     os.close(f)
@@ -33,6 +33,7 @@ def get_lightness(screenshot_cmd):
     return result / 255
 
 
+# Usage
 def usage():
     print(
         "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10]".format(
@@ -42,6 +43,7 @@ def usage():
 
 
 def main():
+    # test params
     try:
         opts, args = getopt.getopt(
             sys.argv[1:],
@@ -53,12 +55,14 @@ def main():
         usage()
         sys.exit(2)
 
+    # default values
     input = CAMERA
     output = FAKE_SENSOR
     lux = 0
     sleep_time = SLEEP_TIME
     verbose = False
 
+    # get params values
     for o, a in opts:
         if o in ("-v", "--verbose"):
             verbose = True
@@ -76,7 +80,9 @@ def main():
 
     sensor = open(output, "r+")
 
+    # main loop
     while True:
+        # get sensor value
         try:
             lux = 100 * get_lightness(
                 [
@@ -97,16 +103,18 @@ def main():
             print("Can't get lux, bad camera device?")
 
         lux = int(lux)
-
         if verbose:
             print("lux={}".format(lux))
 
+        # write sensor value
         sensor.seek(0)
         sensor.write(str(lux))
         sensor.truncate()
 
+        # wait
         sleep(sleep_time)
 
+    # close sensor on exit
     sensor.close()
 
 
