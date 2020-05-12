@@ -74,6 +74,8 @@ def main():
         else:
             assert False, "unhandled option, see --help"
 
+    sensor = open(output, "r+")
+
     while True:
         try:
             lux = 100 * get_lightness(
@@ -99,12 +101,13 @@ def main():
         if verbose:
             print("lux={}".format(lux))
 
-        sensor = open(output, "w")
-
+        sensor.seek(0)
         sensor.write(str(lux))
-        sensor.close()
+        sensor.truncate()
 
         sleep(sleep_time)
+
+    sensor.close()
 
 
 if __name__ == "__main__":
