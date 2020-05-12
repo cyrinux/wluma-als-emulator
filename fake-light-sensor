@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+
+import tempfile
+import os
+import subprocess
+import os.path
+import math
+import getopt
+import sys
+from time import sleep
+from PIL import Image, ImageStat
+
+FAKE_SENSOR = "/tmp/fake_light_sensor"
+CAMERA = "/dev/video0"
+SLEEP_TIME = 10
+
+
+def get_lightness(screenshot_cmd):
+    f, path = tempfile.mkstemp()
+    os.close(f)
+    os.remove(path)
+
+    path += ".jpg"
+    subprocess.run([*screenshot_cmd, path], check=True)
+
+    result = None
+    with Image.open(path) as im:
+        stat = ImageStat.Stat(im)
+        r, g, b = stat.rms
+        result = math.sqrt(0.241 * (r ** 2) + 0.691 * (g ** 2) + 0.068 * (b ** 2))
+
+    os.remove(path)
+    return result / 255
+
+
+def usage():
+    print(
+        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10]".format(
+            os.path.basename(__file__)
+        )
+    )
+
+
+def main():
+    try:
+        opts, args = getopt.getopt(
+            sys.argv[1:],
+            "i:o:s:hv",
+            ["help", "input=", "output=", "sleep=", "verbose"],
+        )
+    except getopt.GetoptError as err:
+        print(err)
+        usage()
+        sys.exit(2)
+
+    input = CAMERA
+    output = FAKE_SENSOR
+    lux = 0
+    sleep_time = SLEEP_TIME
+    verbose = False
+
+    for o, a in opts:
+        if o in ("-v", "--verbose"):
+            verbose = True
+        elif o in ("-s", "--sleep"):
+            sleep_time = int(a)
+        elif o in ("-i", "--input"):
+            input = a
+        elif o in ("-o", "--output"):
+            output = a
+        elif o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        else:
+            assert False, "unhandled option, see --help"
+
+    while True:
+        try:
+            lux = 100 * get_lightness(
+                [
+                    "ffmpeg",
+                    "-hide_banner",
+                    "-loglevel",
+                    "panic",
+                    "-i",
+                    input,
+                    "-vframes",
+                    "1",
+                ]
+            )
+        except FileNotFoundError as e:
+            print("The binary ffmpeg is not found")
+            sys.exit(1)
+        except subprocess.CalledProcessError as e:
+            print("Can't get lux, bad camera device?")
+
+        lux = int(lux)
+
+        if verbose:
+            print("lux={}".format(lux))
+
+        sensor = open(output, "w")
+
+        sensor.write(str(lux))
+        sensor.close()
+
+        sleep(sleep_time)
+
+
+if __name__ == "__main__":
+    main()
