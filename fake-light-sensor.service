@@ -1,0 +1,9 @@
+[Unit]
+Description=A fake light sensor based on a video input
+
+[Service]
+ExecStart=/usr/bin/fake-light-sensor
+Restart=always
+
+[Install]
+WantedBy=default.target
