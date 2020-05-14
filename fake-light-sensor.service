@@ -1,5 +1,6 @@
 [Unit]
 Description=A fake light sensor based on a video input
+Before=wluma.service
 
 [Service]
 ExecStart=/usr/bin/fake-light-sensor
