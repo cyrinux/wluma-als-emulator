@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import atexit
 import tempfile
 import os
 import subprocess
@@ -11,7 +12,7 @@ from time import sleep
 from PIL import Image, ImageStat
 
 FAKE_SENSOR = "/tmp/fake_light_sensor"
-CAMERA = "/dev/video0"
+INPUT = "/dev/video0"
 SLEEP_TIME = 10
 
 # Magic to lux from image
@@ -42,6 +43,11 @@ def usage():
     )
 
 
+def exit(output):
+    print("Shutdown fake sensor...")
+    os.remove(output)
+
+
 def main():
     # test params
     try:
@@ -56,7 +62,7 @@ def main():
         sys.exit(2)
 
     # default values
-    input = CAMERA
+    input = INPUT
     output = FAKE_SENSOR
     lux = 0
     sleep_time = SLEEP_TIME
@@ -78,7 +84,18 @@ def main():
         else:
             assert False, "unhandled option, see --help"
 
-    sensor = open(output, "r+")
+    if verbose:
+        print("input: {}, output: {}".format(input, output))
+
+    if os.path.isfile(output):
+        print("{output} already running!".format(output))
+        sys.exit(2)
+
+    # main
+    sensor = open(output, "w+")
+
+    # on exit do
+    atexit.register(exit, output)
 
     # main loop
     while True:
@@ -100,22 +117,21 @@ def main():
             print("The binary ffmpeg is not found")
             sys.exit(1)
         except subprocess.CalledProcessError as e:
-            print("Can't get lux, bad camera device?")
+            print("Can't get lux, bad input device?")
 
         lux = int(lux)
         if verbose:
-            print("lux={}".format(lux))
+            print("lux={} | waiting {} seconds...".format(lux, sleep_time))
 
         # write sensor value
         sensor.seek(0)
-        sensor.write(str(lux))
         sensor.truncate()
+        sensor.write(str(lux))
+        sensor.flush()
+        os.fsync(sensor)
 
         # wait
         sleep(sleep_time)
-
-    # close sensor on exit
-    sensor.close()
 
 
 if __name__ == "__main__":
