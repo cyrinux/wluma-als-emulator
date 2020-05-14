@@ -19,7 +19,7 @@ _Wluma_ will be able to read it by using the `-l /tmp/fake_light_sensor` paramet
 
 ## Installation
 
-Archlinux, from AUR use `fake-light-sensor-git`.
+Archlinux, from AUR use `fake-light-sensor-git`. (not publish yet)
 
 ## Usage
 
