@@ -1,4 +1,4 @@
-# Fake light sensor
+# Fake ambiant light sensor
 
 This is fake light sensor for those who don't get a builtin light sensor in there laptop.
 
