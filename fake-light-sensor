@@ -13,7 +13,7 @@ from PIL import Image, ImageStat
 
 FAKE_SENSOR = "/tmp/fake_light_sensor"
 INPUT = "/dev/video0"
-SLEEP_TIME = 10
+SLEEP_TIME = 30
 
 # Magic to lux from image
 def get_lightness(screenshot_cmd):
@@ -66,6 +66,7 @@ def main():
     output = FAKE_SENSOR
     lux = prev_lux = 0
     sleep_time = SLEEP_TIME
+    sleep_multiplicator = 1
     verbose = False
 
     # get params values
@@ -114,14 +115,24 @@ def main():
                 ]
             )
         except FileNotFoundError as e:
-            print("The binary ffmpeg is not found")
+            print("The binary ffmpeg is not found?\n{}".format(e))
             sys.exit(1)
         except subprocess.CalledProcessError as e:
-            print("Can't get lux, bad input device?")
-
+            print("Can't get lux, bad input device?\n{}".format(e))
         lux = int(lux)
+
+        # less refresh in the dark
+        sleep_multiplicator = 2 if lux <= 10 else 1
+
+        # more refresh if very bright
+        sleep_multiplicator = 0.5 if lux >= 80 else 1
+
         if verbose:
-            print("lux={} | waiting {} seconds...".format(lux, sleep_time))
+            print(
+                "lux={} | waiting {} * {} seconds...".format(
+                    lux, sleep_time, sleep_multiplicator
+                )
+            )
 
         if lux != prev_lux:
             prev_lux = lux
@@ -133,7 +144,7 @@ def main():
             os.fsync(sensor)
 
         # wait
-        sleep(sleep_time)
+        sleep(sleep_time * sleep_multiplicator)
 
 
 if __name__ == "__main__":
