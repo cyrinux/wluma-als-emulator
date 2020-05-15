@@ -26,4 +26,7 @@ package() {
     install -D -m0755 \
         "${srcdir}/fake-light-sensor/fake-light-sensor" \
         "$pkgdir/usr/bin/fake-light-sensor"
+    install -D -m0644 \
+        "${srcdir}/fake-light-sensor/fake-light-sensor.service" \
+        "$pkgdir/usr/lib/systemd/user/fake-light-sensor.service"
 }

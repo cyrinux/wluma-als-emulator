@@ -88,7 +88,7 @@ def main():
         print("input: {}, output: {}".format(input, output))
 
     if os.path.isfile(output):
-        print("{output} already running!".format(output))
+        print("{} already running!".format(output))
         sys.exit(2)
 
     # main
