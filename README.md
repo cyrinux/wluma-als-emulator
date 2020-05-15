@@ -1,6 +1,6 @@
 # Fake ambiant light sensor
 
-This is fake light sensor for those who don't get a builtin light sensor in there laptop.
+This is fake a ambiant light sensor for those who don't get one builtin in there laptop.
 
 Mainly done for Wluma and based on @maximbaz work.
 
