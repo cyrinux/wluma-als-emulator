@@ -64,7 +64,7 @@ def main():
     # default values
     input = INPUT
     output = FAKE_SENSOR
-    lux = 0
+    lux = prev_lux = 0
     sleep_time = SLEEP_TIME
     verbose = False
 
@@ -123,12 +123,14 @@ def main():
         if verbose:
             print("lux={} | waiting {} seconds...".format(lux, sleep_time))
 
-        # write sensor value
-        sensor.seek(0)
-        sensor.truncate()
-        sensor.write(str(lux))
-        sensor.flush()
-        os.fsync(sensor)
+        if lux != prev_lux:
+            prev_lux = lux
+            # write sensor value
+            sensor.seek(0)
+            sensor.truncate()
+            sensor.write(str(lux))
+            sensor.flush()
+            os.fsync(sensor)
 
         # wait
         sleep(sleep_time)
