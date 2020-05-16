@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import atexit
 import getopt
 import math
 import os
@@ -8,12 +7,14 @@ import os.path
 import subprocess
 import sys
 import tempfile
+import signal
 from pathlib import Path
 from PIL import Image, ImageStat
 from time import sleep
 
-FAKE_SENSOR = "/tmp/fake-devices/light-sensor"
+FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
+LOCKFILE = os.environ.get("XDG_RUNTIME_DIR") + "/fake-light-sensor.lock"
 SLEEP_TIME = 30
 
 # Magic to lux from image
@@ -44,9 +45,10 @@ def usage():
     )
 
 
-def exit(output):
-    print("Shutdown fake sensor...")
-    os.remove(output)
+def exit_handler(signal, frame):
+    print("Receive signal {}, shutdown fake sensor...".format(signal))
+    os.remove(LOCKFILE)
+    sys.exit(0)
 
 
 def main():
@@ -71,7 +73,9 @@ def main():
     verbose = False
 
     # try
-    output_basedir = os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH") or FAKE_SENSOR
+    output_basedir = (
+        os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR) + "/light-sensor"
+    )
 
     # get params values
     for o, a in opts:
@@ -89,22 +93,21 @@ def main():
         else:
             assert False, "unhandled option, see --help"
 
-    lock = output_basedir + "/.lock"
     als_raw = output_basedir + "/in_illuminance_raw"
     als_name = output_basedir + "/name"
 
     # create fake /sys dir
     Path(output_basedir).mkdir(parents=True, exist_ok=True)
 
+    if os.path.isfile(LOCKFILE):
+        print("{} already running!".format(os.path.basename(__file__)))
+        sys.exit(2)
+
     if verbose:
         print("input: {}, output: {}".format(input, als_raw))
 
-    if os.path.isfile(lock):
-        print("{} already running!".format(lock))
-        sys.exit(2)
-
     # lock
-    Path(lock).touch()
+    Path(LOCKFILE).touch()
 
     # main
     if not os.path.isfile(als_name):
@@ -115,7 +118,8 @@ def main():
     sensor = open(als_raw, "w+")
 
     # on exit do
-    atexit.register(exit, lock)
+    signal.signal(signal.SIGTERM, exit_handler)
+    signal.signal(signal.SIGINT, exit_handler)
 
     # main loop
     while True:
