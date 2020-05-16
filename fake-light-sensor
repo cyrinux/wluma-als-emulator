@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
 import atexit
-import tempfile
-import os
-import subprocess
-import os.path
-import math
 import getopt
+import math
+import os
+import os.path
+import subprocess
 import sys
-from time import sleep
+import tempfile
+from pathlib import Path
 from PIL import Image, ImageStat
+from time import sleep
 
-FAKE_SENSOR = "/tmp/fake_light_sensor"
+FAKE_SENSOR = "/tmp/fake-devices/light-sensor"
 INPUT = "/dev/video0"
 SLEEP_TIME = 30
 
@@ -85,18 +86,33 @@ def main():
         else:
             assert False, "unhandled option, see --help"
 
-    if verbose:
-        print("input: {}, output: {}".format(input, output))
+    lock = output + "/.lock"
+    als_raw = output + "/in_illuminance_raw"
+    als_name = output + "/name"
 
-    if os.path.isfile(output):
-        print("{} already running!".format(output))
+    # create fake /sys dir
+    Path(output).mkdir(parents=True, exist_ok=True)
+
+    if verbose:
+        print("input: {}, output: {}".format(input, als_raw))
+
+    if os.path.isfile(lock):
+        print("{} already running!".format(lock))
         sys.exit(2)
 
+    # lock
+    Path(lock).touch()
+
     # main
-    sensor = open(output, "w+")
+    if not os.path.isfile(als_name):
+        name = open(als_name, "w")
+        name.write("als")
+        name.flush()
+
+    sensor = open(als_raw, "w+")
 
     # on exit do
-    atexit.register(exit, output)
+    atexit.register(exit, lock)
 
     # main loop
     while True:
