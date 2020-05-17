@@ -14,7 +14,7 @@ from time import sleep
 
 FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
-LOCKFILE = os.environ.get("XDG_RUNTIME_DIR") + "/fake-light-sensor.lock"
+LOCKFILE = os.environ.get("XDG_RUNTIME_DIR", "/tmp") + "/fake-light-sensor.lock"
 SLEEP_TIME = 30
 
 # Magic to lux from image
@@ -24,7 +24,13 @@ def get_lightness(screenshot_cmd):
     os.remove(path)
 
     path += ".jpg"
-    subprocess.run([*screenshot_cmd, path], check=True)
+    try:
+        subprocess.run([*screenshot_cmd, path], check=True)
+    except FileNotFoundError as e:
+        raise ("The binary is not found?\n{}".format(e))
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        raise ("Can't get lux, bad input device?\n{}".format(e))
 
     result = None
     with Image.open(path) as im:
@@ -33,7 +39,7 @@ def get_lightness(screenshot_cmd):
         result = math.sqrt(0.241 * (r ** 2) + 0.691 * (g ** 2) + 0.068 * (b ** 2))
 
     os.remove(path)
-    return result / 255
+    return int(100 * (result / 255))
 
 
 # Usage
@@ -45,130 +51,125 @@ def usage():
     )
 
 
+# On Exit Handler
 def exit_handler(signal, frame):
     print("Receive signal {}, shutdown fake sensor...".format(signal))
     os.remove(LOCKFILE)
     sys.exit(0)
 
 
-def main():
-    # test params
-    try:
-        opts, args = getopt.getopt(
-            sys.argv[1:],
-            "i:o:s:hv",
-            ["help", "input=", "output=", "sleep=", "verbose"],
-        )
-    except getopt.GetoptError as err:
-        print(err)
-        usage()
-        sys.exit(2)
-
-    # default values
-    input = INPUT
-    output_basedir = FAKE_SENSOR
-    lux = prev_lux = 0
-    sleep_time = SLEEP_TIME
-    sleep_multiplicator = 1
-    verbose = False
-
-    # try
-    output_basedir = (
-        os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR) + "/light-sensor"
-    )
-
-    # get params values
-    for o, a in opts:
-        if o in ("-v", "--verbose"):
-            verbose = True
-        elif o in ("-s", "--sleep"):
-            sleep_time = int(a)
-        elif o in ("-i", "--input"):
-            input = a
-        elif o in ("-o", "--output"):
-            output_basedir = a
-        elif o in ("-h", "--help"):
-            usage()
-            sys.exit()
-        else:
-            assert False, "unhandled option, see --help"
-
-    als_raw = output_basedir + "/in_illuminance_raw"
-    als_name = output_basedir + "/name"
-
-    # create fake /sys dir
-    Path(output_basedir).mkdir(parents=True, exist_ok=True)
-
-    if os.path.isfile(LOCKFILE):
-        print("{} already running!".format(os.path.basename(__file__)))
-        sys.exit(2)
-
-    if verbose:
-        print("input: {}, output: {}".format(input, als_raw))
-
-    # lock
-    Path(LOCKFILE).touch()
-
-    # main
-    if not os.path.isfile(als_name):
-        name = open(als_name, "w")
-        name.write("als")
-        name.flush()
-
-    sensor = open(als_raw, "w+")
-
-    # on exit do
-    signal.signal(signal.SIGTERM, exit_handler)
-    signal.signal(signal.SIGINT, exit_handler)
-
-    # main loop
-    while True:
-        # get sensor value
+class FakeSensor:
+    def __init__(self):
+        # test params
         try:
-            lux = 100 * get_lightness(
-                [
-                    "ffmpeg",
-                    "-hide_banner",
-                    "-loglevel",
-                    "panic",
-                    "-i",
-                    input,
-                    "-vframes",
-                    "1",
-                ]
+            opts, args = getopt.getopt(
+                sys.argv[1:],
+                "i:o:s:hv",
+                ["help", "input=", "output=", "sleep=", "verbose"],
             )
-        except FileNotFoundError as e:
-            print("The binary ffmpeg is not found?\n{}".format(e))
-            sys.exit(1)
-        except subprocess.CalledProcessError as e:
-            print("Can't get lux, bad input device?\n{}".format(e))
-        lux = int(lux)
+        except getopt.GetoptError as err:
+            print(err)
+            usage()
+            sys.exit(2)
 
-        # less refresh in the dark
-        sleep_multiplicator = 2 if lux <= 10 else 1
+        # default values
+        self.input = INPUT
+        self.output_basedir = FAKE_SENSOR
+        self.lux = self.prev_lux = 0
+        self.sleep_time = SLEEP_TIME
+        self.sleep_multiplicator = 1
+        self.verbose = False
+        self.capture_command = [ "ffmpeg", "-hide_banner", "-loglevel", "panic", "-i", self.input, "-vframes", "1" ]
 
-        # more refresh if very bright
-        sleep_multiplicator = 0.5 if lux >= 80 else 1
+        # try
+        self.output_basedir = (
+            os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
+            + "/light-sensor"
+        )
 
-        if verbose:
-            print(
-                "lux={} | waiting {} * {} seconds...".format(
-                    lux, sleep_time, sleep_multiplicator
+        # get params values
+        for o, a in opts:
+            if o in ("-v", "--verbose"):
+                self.verbose = True
+            elif o in ("-s", "--sleep"):
+                self.sleep_time = int(a)
+            elif o in ("-i", "--input"):
+                self.input = a
+            elif o in ("-o", "--output"):
+                self.output_basedir = a
+            elif o in ("-h", "--help"):
+                usage()
+                sys.exit()
+            else:
+                assert False, "unhandled option, see --help"
+  
+        # lock
+        if os.path.isfile(LOCKFILE):
+            print("{} already running!".format(os.path.basename(__file__)))
+            sys.exit(2)
+        Path(LOCKFILE).touch()
+
+        # on exit do
+        signal.signal(signal.SIGTERM, exit_handler)
+        signal.signal(signal.SIGINT, exit_handler)
+
+        # create fake sys tree
+        self.create_fake_sensor()
+        
+
+    def create_fake_sensor(self):
+        als_raw = self.output_basedir + "/in_illuminance_raw"
+        als_name = self.output_basedir + "/name"
+
+        # create fake /sys dir
+        Path(self.output_basedir).mkdir(parents=True, exist_ok=True)
+        if not os.path.isfile(als_name):
+            name = open(als_name, "w")
+            name.write("als")
+            name.flush()
+            
+        if self.verbose:
+            print("input: {}, output: {}".format(self.input, als_raw))
+
+        self.sensor = open(als_raw, "w+")
+
+
+    def write_lux(self):
+        # write sensor value
+        self.sensor.seek(0)
+        self.sensor.truncate()
+        self.sensor.write(str(self.lux))
+        self.sensor.flush()
+        os.fsync(self.sensor)
+
+
+    def main_loop(self):
+        # main loop
+        while True:
+            # get sensor value
+            self.lux = get_lightness(self.capture_command)
+            if self.lux != self.prev_lux:
+                self.prev_lux = self.lux
+                self.write_lux()
+
+            # less refresh in the dark
+            sleep_multiplicator = 2 if self.lux <= 10 else 1
+
+            # more refresh if very bright
+            sleep_multiplicator = 0.5 if self.lux >= 80 else 1
+
+            if self.verbose:
+                print(
+                    "lux={} | waiting {} * {} seconds...".format(
+                        self.lux, self.sleep_time, sleep_multiplicator
+                    )
                 )
-            )
 
-        if lux != prev_lux:
-            prev_lux = lux
-            # write sensor value
-            sensor.seek(0)
-            sensor.truncate()
-            sensor.write(str(lux))
-            sensor.flush()
-            os.fsync(sensor)
 
-        # wait
-        sleep(sleep_time * sleep_multiplicator)
+            # wait
+            sleep(self.sleep_time * sleep_multiplicator)
 
 
 if __name__ == "__main__":
-    main()
+    als = FakeSensor()
+    als.main_loop()
