@@ -29,8 +29,6 @@ def get_lightness(screenshot_cmd):
     except FileNotFoundError as e:
         raise ("The binary is not found?\n{}".format(e))
         sys.exit(1)
-    except subprocess.CalledProcessError as e:
-        raise ("Can't get lux, bad input device?\n{}".format(e))
 
     result = None
     with Image.open(path) as im:
@@ -79,9 +77,6 @@ class FakeSensor:
         self.sleep_time = SLEEP_TIME
         self.sleep_multiplicator = 1
         self.verbose = False
-        self.capture_command = [ "ffmpeg", "-hide_banner", "-loglevel", "panic", "-i", self.input, "-vframes", "1" ]
-
-        # try
         self.output_basedir = (
             os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
             + "/light-sensor"
@@ -102,20 +97,30 @@ class FakeSensor:
                 sys.exit()
             else:
                 assert False, "unhandled option, see --help"
-  
+
+        # on exit do
+        signal.signal(signal.SIGTERM, exit_handler)
+        signal.signal(signal.SIGINT, exit_handler)
+
         # lock
         if os.path.isfile(LOCKFILE):
             print("{} already running!".format(os.path.basename(__file__)))
             sys.exit(2)
         Path(LOCKFILE).touch()
 
-        # on exit do
-        signal.signal(signal.SIGTERM, exit_handler)
-        signal.signal(signal.SIGINT, exit_handler)
+        self.capture_command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "panic",
+            "-i",
+            self.input,
+            "-vframes",
+            "1",
+        ]
 
         # create fake sys tree
         self.create_fake_sensor()
-        
 
     def create_fake_sensor(self):
         als_raw = self.output_basedir + "/in_illuminance_raw"
@@ -127,12 +132,11 @@ class FakeSensor:
             name = open(als_name, "w")
             name.write("als")
             name.flush()
-            
+
         if self.verbose:
             print("input: {}, output: {}".format(self.input, als_raw))
 
         self.sensor = open(als_raw, "w+")
-
 
     def write_lux(self):
         # write sensor value
@@ -142,32 +146,31 @@ class FakeSensor:
         self.sensor.flush()
         os.fsync(self.sensor)
 
-
     def main_loop(self):
         # main loop
         while True:
             # get sensor value
-            self.lux = get_lightness(self.capture_command)
+            try:
+                self.lux = get_lightness(self.capture_command)
+            except subprocess.CalledProcessError as e:
+                raise ("Can't get lux, bad input device?\n{}".format(e))
+                sys.exit(1)
+
             if self.lux != self.prev_lux:
                 self.prev_lux = self.lux
                 self.write_lux()
 
             # less refresh in the dark
-            sleep_multiplicator = 2 if self.lux <= 10 else 1
+            sleep_time = (self.sleep_time * 2) if self.lux <= 10 else self.sleep_time
 
             # more refresh if very bright
-            sleep_multiplicator = 0.5 if self.lux >= 80 else 1
+            sleep_time = (self.sleep_time * 0.5) if self.lux >= 80 else self.sleep_time
 
             if self.verbose:
-                print(
-                    "lux={} | waiting {} * {} seconds...".format(
-                        self.lux, self.sleep_time, sleep_multiplicator
-                    )
-                )
-
+                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
 
             # wait
-            sleep(self.sleep_time * sleep_multiplicator)
+            sleep(sleep_time)
 
 
 if __name__ == "__main__":
