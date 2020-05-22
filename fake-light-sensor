@@ -10,7 +10,6 @@ import tempfile
 import signal
 import datetime
 from pathlib import Path
-from PIL import Image, ImageStat
 from time import sleep
 
 FAKE_SENSOR = "/tmp/fake-devices"
@@ -211,9 +210,12 @@ class FakeSensor:
 
 if __name__ == "__main__":
     fals = FakeSensor()
+    if fals.mode == "webcam":
+        from PIL import Image, ImageStat
+
     if fals.mode == "time":
         print("Time period mode will be use")
         fals.period_loop()
-    else:
-        print("Default mode webcam will be use")
+    elif fals.mode == "webcam":
+        print("Webcam mode will be use")
         fals.webcam_loop()
