@@ -105,7 +105,7 @@ class FakeSensor:
 
         # default values
         self.input = INPUT
-        self.lux = self.prev_lux = 0
+        self.lux = self.prev_lux = None
         self.sleep_time = SLEEP_TIME
         self.sleep_mode = SLEEP_MODE
         self.verbose = False
