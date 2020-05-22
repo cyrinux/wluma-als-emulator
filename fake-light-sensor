@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import signal
+import datetime
 from pathlib import Path
 from PIL import Image, ImageStat
 from time import sleep
@@ -16,6 +17,14 @@ FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
 LOCKFILE = os.environ.get("XDG_RUNTIME_DIR", "/tmp") + "/fake-light-sensor.lock"
 SLEEP_TIME = 30
+MODE = "webcam"
+PERIODS = {
+    0: [[0, 3]],
+    25: [[3, 6]],
+    50: [[6, 9]],
+    75: [[9, 11], [13, 23]],
+    100: [[12, 12]],
+}
 
 # Magic to lux from image
 def get_lightness(screenshot_cmd):
@@ -40,10 +49,17 @@ def get_lightness(screenshot_cmd):
     return int(100 * (result / 255))
 
 
+def get_lux_by_time(hour):
+    for p in PERIODS:
+        for r in PERIODS[p]:
+            if hour in range(r[0], r[1]):
+                return p
+
+
 # Usage
 def usage():
     print(
-        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10]".format(
+        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10] [--mode=webcam/time] [--verbose]".format(
             os.path.basename(__file__)
         )
     )
@@ -62,8 +78,8 @@ class FakeSensor:
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "i:o:s:hv",
-                ["help", "input=", "output=", "sleep=", "verbose"],
+                "i:o:s:m:hv",
+                ["help", "input=", "output=", "sleep=", "mode=", "verbose"],
             )
         except getopt.GetoptError as err:
             print(err)
@@ -77,6 +93,7 @@ class FakeSensor:
         self.sleep_time = SLEEP_TIME
         self.sleep_multiplicator = 1
         self.verbose = False
+        self.mode = MODE
         self.output_basedir = (
             os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
             + "/light-sensor"
@@ -86,6 +103,8 @@ class FakeSensor:
         for o, a in opts:
             if o in ("-v", "--verbose"):
                 self.verbose = True
+            elif o in ("-m", "--mode"):
+                self.mode = a
             elif o in ("-s", "--sleep"):
                 self.sleep_time = int(a)
             elif o in ("-i", "--input"):
@@ -97,6 +116,9 @@ class FakeSensor:
                 sys.exit()
             else:
                 assert False, "unhandled option, see --help"
+
+        if self.mode == "time":
+            self.input = PERIODS
 
         # on exit do
         signal.signal(signal.SIGTERM, exit_handler)
@@ -146,8 +168,7 @@ class FakeSensor:
         self.sensor.flush()
         os.fsync(self.sensor)
 
-    def main_loop(self):
-        # main loop
+    def webcam_loop(self):
         while True:
             # get sensor value
             try:
@@ -172,7 +193,27 @@ class FakeSensor:
             # wait
             sleep(sleep_time)
 
+    def period_loop(self):
+        while True:
+            hour = datetime.datetime.now().hour
+            self.lux = get_lux_by_time(hour)
+            if self.lux != self.prev_lux:
+                self.prev_lux = self.lux
+                self.write_lux()
+
+            sleep_time = 5
+            if self.verbose:
+                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
+
+            # wait
+            sleep(sleep_time)
+
 
 if __name__ == "__main__":
-    als = FakeSensor()
-    als.main_loop()
+    fals = FakeSensor()
+    if fals.mode == "time":
+        print("Time period mode will be use")
+        fals.period_loop()
+    else:
+        print("Default mode webcam will be use")
+        fals.webcam_loop()
