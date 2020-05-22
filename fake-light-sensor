@@ -241,8 +241,6 @@ class FakeSensor:
             sleep(sleep_time)
 
     def time_base_loop(self):
-        if self.verbose:
-            print("{}".format(self.mode))
         while True:
             self.lux = get_lux_by_seconds()
             if self.lux != self.prev_lux:
