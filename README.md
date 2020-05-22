@@ -15,8 +15,8 @@ _Wluma_ will be able to read it by using the `-l /tmp/fake_light_sensor` paramet
 
 ## Requirement
 
-- ffmpeg
-- python-pyllow
+- ffmpeg (needed for webcam mode)
+- python-pyllow (needed for webcam mode)
 
 ## Installation
 
