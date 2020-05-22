@@ -9,7 +9,7 @@ Mainly done for [wluma](https://github.com/maximbaz/wluma) and based on [@maximb
 The following modes are available:
 
 - `webcam`: takes a webcam capture with ffmpeg and approximates ambient light value out of image brightness.
-- `seconds`: approximates ambient light value based on the current time.
+- `time`: approximates ambient light value based on the current time.
 
 ## Dependencies
 
