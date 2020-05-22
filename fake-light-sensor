@@ -16,6 +16,7 @@ FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
 LOCKFILE = os.environ.get("XDG_RUNTIME_DIR", "/tmp") + "/fake-light-sensor.lock"
 SLEEP_TIME = 30
+SLEEP_MODE = "lux"
 MODE = "webcam"
 
 LUX_PER_PERIODS = {
@@ -106,7 +107,7 @@ class FakeSensor:
         self.output_basedir = FAKE_SENSOR
         self.lux = self.prev_lux = 0
         self.sleep_time = SLEEP_TIME
-        self.sleep_mode = False
+        self.sleep_mode = SLEEP_MODE
         self.sleep_multiplicator = 1
         self.verbose = False
         self.mode = MODE
@@ -125,8 +126,19 @@ class FakeSensor:
                 if a == "periods":
                     self.sleep_mode = "periods"
                     self.sleep_time = get_sleep_by_periods(datetime.datetime.now().hour)
+                elif a == "lux":
+                    self.sleep_mode = "lux"
                 else:
-                    self.sleep_time = a
+                    try:
+                        self.sleep_time = int(a)
+                        self.sleep_mode = "fixed"
+                    except:
+                        print(
+                            "sleep must be an int or 'lux' or 'periods', default to {} seconds.".format(
+                                SLEEP_TIME
+                            )
+                        )
+                        self.sleep_time = int(SLEEP_TIME)
             elif o in ("-i", "--input"):
                 self.input = a
             elif o in ("-o", "--output"):
@@ -189,6 +201,9 @@ class FakeSensor:
         os.fsync(self.sensor)
 
     def webcam_loop(self):
+        if self.verbose:
+            print("Sleep mode: {} will be use".format(self.sleep_mode))
+
         while True:
             # get sensor value
             try:
@@ -201,9 +216,11 @@ class FakeSensor:
                 self.prev_lux = self.lux
                 self.write_lux()
 
-            if self.sleep_mode and self.sleep_mode == "periods":
+            if self.sleep_mode == "fixed":
+                sleep_time = self.sleep_time
+            elif self.sleep_mode == "periods":
                 sleep_time = get_sleep_by_periods(datetime.datetime.now().hour)
-            else:
+            elif self.sleep_mode == "lux":
                 # less refresh in the dark
                 sleep_time = (
                     (self.sleep_time * 2) if self.lux <= 10 else self.sleep_time
