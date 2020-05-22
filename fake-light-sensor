@@ -11,6 +11,7 @@ import signal
 from datetime import datetime, time
 from pathlib import Path
 from time import sleep
+from PIL import Image, ImageStat
 
 FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
@@ -24,72 +25,156 @@ SLEEP_PER_PERIODS = {
     15: [[12, 15]],
 }
 
-# Magic to lux from image
-def get_lightness(screenshot_cmd):
-    f, path = tempfile.mkstemp()
-    os.close(f)
-    os.remove(path)
+class WebcamStrategy:
+    def __init__(self, config):
+        self.config = config
+        self.lux = self.prev_lux = None
 
-    path += ".jpg"
-    try:
-        subprocess.run([*screenshot_cmd, path], check=True)
-    except FileNotFoundError as e:
-        raise ("The binary is not found?\n{}".format(e))
-        sys.exit(1)
+        self.capture_command = [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "panic",
+            "-i",
+            config.input,
+            "-vframes",
+            "1",
+        ]
 
-    result = None
-    with Image.open(path) as im:
-        stat = ImageStat.Stat(im)
-        r, g, b = stat.rms
-        result = math.sqrt(0.241 * (r ** 2) + 0.691 * (g ** 2) + 0.068 * (b ** 2))
+        self.loop()
 
-    os.remove(path)
-    return int(100 * (result / 255))
+    def calculate(self, screenshot_cmd):
+        f, path = tempfile.mkstemp()
+        os.close(f)
+        os.remove(path)
+
+        path += ".jpg"
+        try:
+            subprocess.run([*screenshot_cmd, path], check=True)
+        except FileNotFoundError as e:
+            raise ("The binary is not found?\n{}".format(e))
+            sys.exit(1)
+
+        result = None
+        with Image.open(path) as im:
+            stat = ImageStat.Stat(im)
+            r, g, b = stat.rms
+            result = math.sqrt(0.241 * (r ** 2) + 0.691 * (g ** 2) + 0.068 * (b ** 2))
+
+        os.remove(path)
+        return int(100 * (result / 255))
+
+    def loop(self):
+        if self.config.verbose:
+            print("Sleep mode: {} will be use".format(self.config.sleep_mode))
+
+        while True:
+            # get sensor value
+            try:
+                self.lux = self.calculate(self.capture_command)
+            except subprocess.CalledProcessError as e:
+                raise ("Can't get lux, bad input device?\n{}".format(e))
+                sys.exit(1)
+
+            if self.lux != self.prev_lux:
+                self.prev_lux = self.lux
+                self.config.write_lux(self.lux)
+
+            if self.config.sleep_mode == "fixed":
+                sleep_time = self.config.sleep_time
+            elif self.config.sleep_mode == "periods":
+                sleep_time = self.config.get_sleep_by_periods()
+            elif self.config.sleep_mode == "lux":
+                # less refresh in the dark
+                sleep_time = (
+                    (self.config.sleep_time * 2) if self.lux <= 10 else self.config.sleep_time
+                )
+
+                # more refresh if very bright
+                sleep_time = (
+                    (self.config.sleep_time * 0.5) if self.lux >= 80 else self.config.sleep_time
+                )
+
+            if self.config.verbose:
+                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
+
+            # wait
+            sleep(sleep_time)
 
 
-def get_lux_by_seconds():
-    """
-    we take current time (say 11:10am), convert to seconds (11*60*60 + 10*60 = 40200),
-    and then because midday (43200s) is 100% lux and midnight (0s) is 0% lux,
-    change of 1% of lux is (43200 / 100 = 432),
-    current time 11am should be (100 - (43200 - 40200) / 432) = 93% of lux
-    """
-    midday_in_seconds = 43200
-    utcnow = datetime.utcnow()
-    midnight_utc = datetime.combine(utcnow.date(), time(0))
-    now = utcnow - midnight_utc
-    now_in_seconds = now.seconds
-    # from midnigh to midday lux up
-    if now_in_seconds > midday_in_seconds:
-        lux = 100 - ((now_in_seconds * 100 / 43200) - 100)
-    else:
-        # after midday to midnigh lux down
-        lux = now_in_seconds * 100 / 43200
-    return int(lux)
+class TimeStrategy:
+    def __init__(self, config):
+        self.config = config
+        self.lux = self.prev_lux = None
 
+        self.loop()
 
-def get_sleep_by_periods():
-    hour = datetime.now().hour
-    sleep_time = 30
-    for p in SLEEP_PER_PERIODS:
-        for r in SLEEP_PER_PERIODS[p]:
-            if hour in range(r[0], r[1]):
-                sleep_time = p
-                break
-    return int(sleep_time)
+    def calculate(self):
+        """
+        we take current time (say 11:10am), convert to seconds (11*60*60 + 10*60 = 40200),
+        and then because midday (43200s) is 100% lux and midnight (0s) is 0% lux,
+        change of 1% of lux is (43200 / 100 = 432),
+        current time 11am should be (100 - (43200 - 40200) / 432) = 93% of lux
+        """
+        midday_in_seconds = 43200
+        utcnow = datetime.utcnow()
+        midnight_utc = datetime.combine(utcnow.date(), time(0))
+        now = utcnow - midnight_utc
+        now_in_seconds = now.seconds
+        # from midnigh to midday lux up
+        if now_in_seconds > midday_in_seconds:
+            lux = 100 - ((now_in_seconds * 100 / 43200) - 100)
+        else:
+            # after midday to midnigh lux down
+            lux = now_in_seconds * 100 / 43200
+        return int(lux)
 
+    def loop(self):
+        while True:
+            self.lux = self.calculate()
+            if self.lux != self.prev_lux:
+                self.prev_lux = self.lux
+                self.config.write_lux(self.lux)
 
-# Usage
-def usage():
-    print(
-        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--strategy=webcam/time] [--verbose]".format(
-            os.path.basename(__file__)
-        )
-    )
-    print("env FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
+            sleep_time = self.config.sleep_time
+
+            if self.config.verbose:
+                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
+
+            # wait
+            sleep(sleep_time)
 
 
 class FakeSensor:
+    def __init__(self, config):
+        self.config = config
+        # create fake sys tree
+        self.create_fake_sensor()
+
+    def create_fake_sensor(self):
+        als_raw = self.config.output_basedir + "/in_illuminance_raw"
+        als_name = self.config.output_basedir + "/name"
+
+        if not os.path.isfile(als_name):
+            name = open(als_name, "w")
+            name.write("als")
+            name.flush()
+
+        if self.config.verbose:
+            print("input: {}, output: {}".format(self.config.input, als_raw))
+
+        self.sensor = open(als_raw, "w+")
+
+    def write_lux(self, lux):
+        # write sensor value
+        self.sensor.seek(0)
+        self.sensor.truncate()
+        self.sensor.write(str(lux))
+        self.sensor.flush()
+        os.fsync(self.sensor)
+
+
+class Config:
     def __init__(self):
         # test params
         try:
@@ -100,12 +185,11 @@ class FakeSensor:
             )
         except getopt.GetoptError as err:
             print(err)
-            usage()
+            self.usage()
             sys.exit(2)
 
         # default values
         self.input = INPUT
-        self.lux = self.prev_lux = None
         self.sleep_time = SLEEP_TIME
         self.sleep_mode = SLEEP_MODE
         self.verbose = False
@@ -125,7 +209,7 @@ class FakeSensor:
             elif o in ("-s", "--sleep"):
                 if a == "periods":
                     self.sleep_mode = "periods"
-                    self.sleep_time = get_sleep_by_periods()
+                    self.sleep_time = self.get_sleep_by_periods()
                 elif a == "lux":
                     self.sleep_mode = "lux"
                 else:
@@ -144,8 +228,8 @@ class FakeSensor:
             elif o in ("-o", "--output"):
                 self.output_basedir = a
             elif o in ("-h", "--help"):
-                usage()
-                sys.exit()
+                self.usage()
+                sys.exit(0)
             else:
                 assert False, "unhandled option, see --help"
 
@@ -163,93 +247,8 @@ class FakeSensor:
 
         Path(self.lockfile()).touch()
 
-        self.capture_command = [
-            "ffmpeg",
-            "-hide_banner",
-            "-loglevel",
-            "panic",
-            "-i",
-            self.input,
-            "-vframes",
-            "1",
-        ]
-
-        # create fake sys tree
-        self.create_fake_sensor()
-
-    def create_fake_sensor(self):
-        als_raw = self.output_basedir + "/in_illuminance_raw"
-        als_name = self.output_basedir + "/name"
-
-        if not os.path.isfile(als_name):
-            name = open(als_name, "w")
-            name.write("als")
-            name.flush()
-
-        if self.verbose:
-            print("input: {}, output: {}".format(self.input, als_raw))
-
-        self.sensor = open(als_raw, "w+")
-
-    def write_lux(self):
-        # write sensor value
-        self.sensor.seek(0)
-        self.sensor.truncate()
-        self.sensor.write(str(self.lux))
-        self.sensor.flush()
-        os.fsync(self.sensor)
-
-    def webcam_loop(self):
-        if self.verbose:
-            print("Sleep mode: {} will be use".format(self.sleep_mode))
-
-        while True:
-            # get sensor value
-            try:
-                self.lux = get_lightness(self.capture_command)
-            except subprocess.CalledProcessError as e:
-                raise ("Can't get lux, bad input device?\n{}".format(e))
-                sys.exit(1)
-
-            if self.lux != self.prev_lux:
-                self.prev_lux = self.lux
-                self.write_lux()
-
-            if self.sleep_mode == "fixed":
-                sleep_time = self.sleep_time
-            elif self.sleep_mode == "periods":
-                sleep_time = get_sleep_by_periods()
-            elif self.sleep_mode == "lux":
-                # less refresh in the dark
-                sleep_time = (
-                    (self.sleep_time * 2) if self.lux <= 10 else self.sleep_time
-                )
-
-                # more refresh if very bright
-                sleep_time = (
-                    (self.sleep_time * 0.5) if self.lux >= 80 else self.sleep_time
-                )
-
-            if self.verbose:
-                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
-
-            # wait
-            sleep(sleep_time)
-
-    def time_base_loop(self):
-        while True:
-            self.lux = get_lux_by_seconds()
-            if self.lux != self.prev_lux:
-                self.prev_lux = self.lux
-                self.write_lux()
-
-            sleep_time = self.sleep_time
-
-            if self.verbose:
-                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
-
-            # wait
-            sleep(sleep_time)
+    def lockfile(self):
+        return self.output_basedir + "/" + LOCKFILE
 
     def cleanup(self):
         os.remove(self.lockfile())
@@ -259,26 +258,31 @@ class FakeSensor:
         self.cleanup()
         sys.exit(0)
 
-    def lockfile(self):
-        return self.output_basedir + "/" + LOCKFILE
+    def get_sleep_by_periods(self):
+        hour = datetime.now().hour
+        sleep_time = 30
+        for p in SLEEP_PER_PERIODS:
+            for r in SLEEP_PER_PERIODS[p]:
+                if hour in range(r[0], r[1]):
+                    sleep_time = p
+                    break
+        return int(sleep_time)
+
+    def usage(self):
+        print(
+            "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--strategy=webcam/time] [--verbose]".format(
+                os.path.basename(__file__)
+            )
+        )
+        print("env FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
 
 
 if __name__ == "__main__":
-    fals = FakeSensor()
 
     try:
-        if fals.strategy == "time":
-            if fals.verbose:
-                print("Time strategy will be used")
-            fals.time_base_loop()
-
-        elif fals.strategy == "webcam":
-            from PIL import Image, ImageStat
-
-            if fals.verbose:
-                print("Webcam strategy will be used")
-            fals.webcam_loop()
+        config = Config()
+        FakeSensor(config)
     except Exception as e:
         print("Got exception, aborting: ", e)
-        fals.cleanup()
+        config.cleanup()
         sys.exit(3)
