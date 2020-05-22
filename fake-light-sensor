@@ -11,7 +11,6 @@ import signal
 from datetime import datetime, time
 from pathlib import Path
 from time import sleep
-from PIL import Image, ImageStat
 
 FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
@@ -290,9 +289,11 @@ if __name__ == "__main__":
         if config.strategy == "time":
             TimeStrategy(config)
         elif config.strategy == "webcam":
+            from PIL import Image, ImageStat
+
             WebcamStrategy(config)
         else:
-            WebcamStrategy(config)
+            config.usage()
 
     except Exception as e:
         print("Got exception, aborting: ", e)
