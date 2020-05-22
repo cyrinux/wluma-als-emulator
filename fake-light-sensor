@@ -15,8 +15,8 @@ from time import sleep
 FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
 LOCKFILE = "fake-light-sensor.lock"
-SLEEP_TIME = 30
 SLEEP_MODE = "lux"
+SLEEP_TIME = 30
 STRATEGY = "webcam"
 
 SLEEP_PER_PERIODS = {
@@ -212,22 +212,7 @@ class Config:
             elif o in ("-t", "--strategy"):
                 self.strategy = a
             elif o in ("-s", "--sleep"):
-                if a == "periods":
-                    self.sleep_mode = "periods"
-                    self.sleep_time = self.get_sleep_by_periods()
-                elif a == "lux":
-                    self.sleep_mode = "lux"
-                else:
-                    try:
-                        self.sleep_time = int(a)
-                        self.sleep_mode = "fixed"
-                    except:
-                        print(
-                            "sleep must be an int or 'lux' or 'periods', default to {} seconds.".format(
-                                SLEEP_TIME
-                            )
-                        )
-                        self.sleep_time = int(SLEEP_TIME)
+                self.get_sleep_params(a)
             elif o in ("-i", "--input"):
                 self.input = a
             elif o in ("-o", "--output"):
@@ -263,6 +248,24 @@ class Config:
         self.cleanup()
         sys.exit(0)
 
+    def get_sleep_params(self, arg):
+        if arg == "periods":
+            self.sleep_mode = "periods"
+            self.sleep_time = self.get_sleep_by_periods()
+        elif arg == "lux":
+            self.sleep_mode = "lux"
+        else:
+            try:
+                self.sleep_time = int(arg)
+                self.sleep_mode = "fixed"
+            except:
+                print(
+                    "sleep must be an int or 'lux' or 'periods', default to {} seconds.".format(
+                        SLEEP_TIME
+                    )
+                )
+                self.sleep_time = int(SLEEP_TIME)
+
     def get_sleep_by_periods(self):
         hour = datetime.now().hour
         sleep_time = 30
@@ -275,10 +278,12 @@ class Config:
 
     def usage(self):
         print(
-            "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--strategy=webcam/time] [--verbose]".format(
+            """{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor]
+               [--sleep=10/periods] [--strategy=webcam/time] [--verbose]\n""".format(
                 os.path.basename(__file__)
             )
         )
+
         print("env FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
 
 
