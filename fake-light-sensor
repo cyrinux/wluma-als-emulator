@@ -261,10 +261,13 @@ class FakeSensor:
 if __name__ == "__main__":
     fals = FakeSensor()
     if fals.mode == "seconds":
-        print("Time period mode will be use")
+        if fals.verbose:
+            print("Time period mode will be use")
         fals.time_base_loop()
+
     elif fals.mode == "webcam":
         from PIL import Image, ImageStat
 
-        print("Webcam mode will be use")
+        if fals.verbose:
+            print("Webcam mode will be use")
         fals.webcam_loop()
