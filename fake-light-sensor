@@ -25,9 +25,11 @@ SLEEP_PER_PERIODS = {
     15: [[12, 15]],
 }
 
+
 class WebcamStrategy:
     def __init__(self, config):
         self.config = config
+        self.fals = FakeSensor(config)
         self.lux = self.prev_lux = None
 
         self.capture_command = [
@@ -78,7 +80,7 @@ class WebcamStrategy:
 
             if self.lux != self.prev_lux:
                 self.prev_lux = self.lux
-                self.config.write_lux(self.lux)
+                self.fals.write_lux(self.lux)
 
             if self.config.sleep_mode == "fixed":
                 sleep_time = self.config.sleep_time
@@ -87,12 +89,16 @@ class WebcamStrategy:
             elif self.config.sleep_mode == "lux":
                 # less refresh in the dark
                 sleep_time = (
-                    (self.config.sleep_time * 2) if self.lux <= 10 else self.config.sleep_time
+                    (self.config.sleep_time * 2)
+                    if self.lux <= 10
+                    else self.config.sleep_time
                 )
 
                 # more refresh if very bright
                 sleep_time = (
-                    (self.config.sleep_time * 0.5) if self.lux >= 80 else self.config.sleep_time
+                    (self.config.sleep_time * 0.5)
+                    if self.lux >= 80
+                    else self.config.sleep_time
                 )
 
             if self.config.verbose:
@@ -105,6 +111,7 @@ class WebcamStrategy:
 class TimeStrategy:
     def __init__(self, config):
         self.config = config
+        self.fals = FakeSensor(config)
         self.lux = self.prev_lux = None
 
         self.loop()
@@ -134,7 +141,7 @@ class TimeStrategy:
             self.lux = self.calculate()
             if self.lux != self.prev_lux:
                 self.prev_lux = self.lux
-                self.config.write_lux(self.lux)
+                self.fals.write_lux(self.lux)
 
             sleep_time = self.config.sleep_time
 
@@ -148,7 +155,6 @@ class TimeStrategy:
 class FakeSensor:
     def __init__(self, config):
         self.config = config
-        # create fake sys tree
         self.create_fake_sensor()
 
     def create_fake_sensor(self):
@@ -281,7 +287,13 @@ if __name__ == "__main__":
 
     try:
         config = Config()
-        FakeSensor(config)
+        if config.strategy == "time":
+            TimeStrategy(config)
+        elif config.strategy == "webcam":
+            WebcamStrategy(config)
+        else:
+            WebcamStrategy(config)
+
     except Exception as e:
         print("Got exception, aborting: ", e)
         config.cleanup()
