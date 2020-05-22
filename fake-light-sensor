@@ -297,6 +297,7 @@ if __name__ == "__main__":
             strategy = WebcamStrategy(config)
         else:
             config.usage()
+            sys.exit(1)
 
         fals = FakeSensor(strategy)
         fals.run()
