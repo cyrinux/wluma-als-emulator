@@ -86,6 +86,7 @@ def usage():
             os.path.basename(__file__)
         )
     )
+    print("env FAKE_AMBIANCE_LIGHT_SENSOR_MODE can be use for 'mode'")
 
 
 # On Exit Handler
@@ -121,6 +122,7 @@ class FakeSensor:
             os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
             + "/light-sensor"
         )
+        self.mode = os.environ.get("FAKE_AMBIANCE_LIGHT_SENSOR_MODE", MODE)
 
         # get params values
         for o, a in opts:
