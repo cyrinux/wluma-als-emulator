@@ -1,26 +1,24 @@
-# Fake ambiant light sensor
+# Fake ambient light sensor
 
-This is fake a ambiant light sensor for those who don't get one builtin in there laptop.
+This is a fake ambient light sensor for those who don't get one built into in their laptop.
 
-Mainly done for Wluma and based on @maximbaz work.
+Mainly done for [wluma](https://github.com/maximbaz/wluma) and based on [@maximbaz](https://github.com/maximbaz)'s work.
 
-Wluma is a great project that set brighness based on luma from what you are watching, and ambiance light.
-See more [here](https://github.com/maximbaz/wluma).
+`wluma` is a great project that sets screen brighness based on screen contents and ambient light around you.
 
-If you don't got a light sensor on your laptop, use your webcam or a timeperiods as a fake light (lux) sensor.
-Webcam mode take a webcam capture with ffmpeg then approximate a lux value from this one.
-Periods mode return a fake lux value based on timeperiods set in the sources code.
+The following modes are available:
 
-_Wluma_ will be able to read it by using the `-l /tmp/fake_light_sensor` parameter.
+- `webcam`: takes a webcam capture with ffmpeg and approximates ambient light value out of image brightness.
+- `seconds`: approximates ambient light value based on the current time.
 
-## Requirement
+## Dependencies
 
-- ffmpeg (needed for webcam mode)
-- python-pyllow (needed for webcam mode)
+- `ffmpeg` (needed for webcam mode)
+- `python-pillow` (needed for webcam mode)
 
 ## Installation
 
-Archlinux, from AUR use `fake-light-sensor-git`. (not publish yet)
+On Arch Linux, use AUR package `fake-light-sensor-git`. (not published yet)
 
 ## Usage
 

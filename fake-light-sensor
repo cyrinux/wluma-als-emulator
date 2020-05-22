@@ -14,10 +14,10 @@ from time import sleep
 
 FAKE_SENSOR = "/tmp/fake-devices"
 INPUT = "/dev/video0"
-LOCKFILE = os.environ.get("XDG_RUNTIME_DIR", "/tmp") + "/fake-light-sensor.lock"
+LOCKFILE = "fake-light-sensor.lock"
 SLEEP_TIME = 30
 SLEEP_MODE = "lux"
-MODE = "webcam"
+STRATEGY = "webcam"
 
 SLEEP_PER_PERIODS = {
     300: [[0, 6], [20, 23]],
@@ -82,18 +82,11 @@ def get_sleep_by_periods():
 # Usage
 def usage():
     print(
-        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--mode=webcam/seconds] [--verbose]".format(
+        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--strategy=webcam/time] [--verbose]".format(
             os.path.basename(__file__)
         )
     )
-    print("env FAKE_AMBIANCE_LIGHT_SENSOR_MODE can be use for 'mode'")
-
-
-# On Exit Handler
-def exit_handler(signal, frame):
-    print("Receive signal {}, shutdown fake sensor...".format(signal))
-    os.remove(LOCKFILE)
-    sys.exit(0)
+    print("env FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
 
 
 class FakeSensor:
@@ -102,8 +95,8 @@ class FakeSensor:
         try:
             opts, args = getopt.getopt(
                 sys.argv[1:],
-                "i:o:s:m:hv",
-                ["input=", "output=", "sleep=", "mode=", "help", "verbose"],
+                "i:o:s:t:hv",
+                ["input=", "output=", "sleep=", "strategy=", "help", "verbose"],
             )
         except getopt.GetoptError as err:
             print(err)
@@ -112,24 +105,23 @@ class FakeSensor:
 
         # default values
         self.input = INPUT
-        self.output_basedir = FAKE_SENSOR
         self.lux = self.prev_lux = 0
         self.sleep_time = SLEEP_TIME
         self.sleep_mode = SLEEP_MODE
         self.verbose = False
-        self.mode = MODE
+        self.strategy = STRATEGY
         self.output_basedir = (
             os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
             + "/light-sensor"
         )
-        self.mode = os.environ.get("FAKE_AMBIANCE_LIGHT_SENSOR_MODE", MODE)
+        self.strategy = os.environ.get("FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY", STRATEGY)
 
         # get params values
         for o, a in opts:
             if o in ("-v", "--verbose"):
                 self.verbose = True
-            elif o in ("-m", "--mode"):
-                self.mode = a
+            elif o in ("-t", "--strategy"):
+                self.strategy = a
             elif o in ("-s", "--sleep"):
                 if a == "periods":
                     self.sleep_mode = "periods"
@@ -157,15 +149,19 @@ class FakeSensor:
             else:
                 assert False, "unhandled option, see --help"
 
-        # on exit do
-        signal.signal(signal.SIGTERM, exit_handler)
-        signal.signal(signal.SIGINT, exit_handler)
+        # create fake /sys dir
+        Path(self.output_basedir).mkdir(parents=True, exist_ok=True)
 
         # lock
-        if os.path.isfile(LOCKFILE):
-            print("{} already running!".format(os.path.basename(__file__)))
+        if os.path.isfile(self.lockfile()):
+            print("{} is already running!".format(os.path.basename(__file__)))
             sys.exit(2)
-        Path(LOCKFILE).touch()
+
+        # on exit do
+        signal.signal(signal.SIGTERM, self.exit_handler)
+        signal.signal(signal.SIGINT, self.exit_handler)
+
+        Path(self.lockfile()).touch()
 
         self.capture_command = [
             "ffmpeg",
@@ -185,8 +181,6 @@ class FakeSensor:
         als_raw = self.output_basedir + "/in_illuminance_raw"
         als_name = self.output_basedir + "/name"
 
-        # create fake /sys dir
-        Path(self.output_basedir).mkdir(parents=True, exist_ok=True)
         if not os.path.isfile(als_name):
             name = open(als_name, "w")
             name.write("als")
@@ -257,17 +251,34 @@ class FakeSensor:
             # wait
             sleep(sleep_time)
 
+    def cleanup(self):
+        os.remove(self.lockfile())
+
+    def exit_handler(self, signal, frame):
+        print("Receive signal {}, shutdown fake sensor...".format(signal))
+        self.cleanup()
+        sys.exit(0)
+
+    def lockfile(self):
+        return self.output_basedir + "/" + LOCKFILE
+
 
 if __name__ == "__main__":
     fals = FakeSensor()
-    if fals.mode == "seconds":
-        if fals.verbose:
-            print("Time period mode will be use")
-        fals.time_base_loop()
 
-    elif fals.mode == "webcam":
-        from PIL import Image, ImageStat
+    try:
+        if fals.strategy == "time":
+            if fals.verbose:
+                print("Time strategy will be used")
+            fals.time_base_loop()
 
-        if fals.verbose:
-            print("Webcam mode will be use")
-        fals.webcam_loop()
+        elif fals.strategy == "webcam":
+            from PIL import Image, ImageStat
+
+            if fals.verbose:
+                print("Webcam strategy will be used")
+            fals.webcam_loop()
+    except Exception as e:
+        print("Got exception, aborting: ", e)
+        fals.cleanup()
+        sys.exit(3)
