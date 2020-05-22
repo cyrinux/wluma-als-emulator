@@ -47,7 +47,7 @@ def get_lightness(screenshot_cmd):
     return int(100 * (result / 255))
 
 
-def get_smooth_lux_by_time():
+def get_lux_by_seconds():
     """
     we take current time (say 11:10am), convert to seconds (11*60*60 + 10*60 = 40200),
     and then because midday (43200s) is 100% lux and midnight (0s) is 0% lux,
@@ -61,10 +61,11 @@ def get_smooth_lux_by_time():
     now_in_seconds = now.seconds
     # from midnigh to midday lux up
     if now_in_seconds > midday_in_seconds:
-        return int(100 - ((now_in_seconds * 100 / 43200) - 100))
+        lux = 100 - ((now_in_seconds * 100 / 43200) - 100)
     else:
         # after midday to midnigh lux down
-        return int(now_in_seconds * 100 / 43200)
+        lux = now_in_seconds * 100 / 43200
+    return int(lux)
 
 
 def get_sleep_by_periods():
@@ -81,7 +82,7 @@ def get_sleep_by_periods():
 # Usage
 def usage():
     print(
-        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--mode=webcam/time] [--verbose]".format(
+        "{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor] [--sleep=10/periods] [--mode=webcam/seconds] [--verbose]".format(
             os.path.basename(__file__)
         )
     )
@@ -101,7 +102,7 @@ class FakeSensor:
             opts, args = getopt.getopt(
                 sys.argv[1:],
                 "i:o:s:m:hv",
-                ["help", "input=", "output=", "sleep=", "mode=", "verbose"],
+                ["input=", "output=", "sleep=", "mode=", "help", "verbose"],
             )
         except getopt.GetoptError as err:
             print(err)
@@ -114,7 +115,6 @@ class FakeSensor:
         self.lux = self.prev_lux = 0
         self.sleep_time = SLEEP_TIME
         self.sleep_mode = SLEEP_MODE
-        self.sleep_multiplicator = 1
         self.verbose = False
         self.mode = MODE
         self.output_basedir = (
@@ -240,14 +240,17 @@ class FakeSensor:
             # wait
             sleep(sleep_time)
 
-    def period_loop(self):
+    def time_base_loop(self):
+        if self.verbose:
+            print("{}".format(self.mode))
         while True:
-            self.lux = get_smooth_lux_by_time()
+            self.lux = get_lux_by_seconds()
             if self.lux != self.prev_lux:
                 self.prev_lux = self.lux
                 self.write_lux()
 
-            sleep_time = 60
+            sleep_time = self.sleep_time
+
             if self.verbose:
                 print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
 
@@ -257,12 +260,11 @@ class FakeSensor:
 
 if __name__ == "__main__":
     fals = FakeSensor()
-    if fals.mode == "webcam":
+    if fals.mode == "seconds":
+        print("Time period mode will be use")
+        fals.time_base_loop()
+    elif fals.mode == "webcam":
         from PIL import Image, ImageStat
 
-    if fals.mode == "periods":
-        print("Time period mode will be use")
-        fals.period_loop()
-    elif fals.mode == "webcam":
         print("Webcam mode will be use")
         fals.webcam_loop()
