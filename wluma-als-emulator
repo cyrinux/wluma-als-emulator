@@ -129,9 +129,9 @@ class TimeStrategy:
         current time 11am should be (100 - (43200 - 40200) / 432) = 93% of lux
         """
         midday_in_seconds = 43200
-        utcnow = datetime.utcnow()
-        midnight_utc = datetime.combine(utcnow.date(), time(0))
-        now = utcnow - midnight_utc
+        datenow = datetime.now()
+        midnight = datetime.combine(datenow.date(), time(0))
+        now = datenow - midnight
         now_in_seconds = now.seconds
         # from midnigh to midday lux up
         if now_in_seconds > midday_in_seconds:
