@@ -1,9 +1,9 @@
 [Unit]
-Description=A fake light sensor based on a video input
+Description=Ambient Light Sensor Emulator for Wluma
 Before=wluma.service
 
 [Service]
-ExecStart=/usr/bin/fake-light-sensor
+ExecStart=/usr/bin/wluma-als-emulator
 Restart=always
 
 [Install]

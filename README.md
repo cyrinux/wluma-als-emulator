@@ -19,6 +19,7 @@ The following modes are available:
 ## Installation
 
 On Arch Linux, use AUR packages `wluma-als-emulator` or `wluma-als-emulator-git`.
+Releases are signed with my PGP key: [FC9B1319726657D3](https://levis.name/pgp_keys.asc) .
 
 ## Usage
 
