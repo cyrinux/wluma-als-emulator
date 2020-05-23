@@ -242,11 +242,11 @@ class Config:
         self.strategy = DEFAULT_STRATEGY
         self.verbose = False
         self.output_basedir = (
-            os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
+            os.environ.get("WLUMA_AMBIENT_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
             + "/light-sensor"
         )
         self.strategy = os.environ.get(
-            "WLUMA_AMBIENT_LIGHT_SENSOR_STRATEGY", DEFAULT_STRATEGY
+            "WLUMA_AMBIENT_LIGHT_SENSOR_EMULATOR_STRATEGY", DEFAULT_STRATEGY
         )
 
         # get params values
@@ -308,9 +308,11 @@ class Config:
             )
         )
 
-        print("env WLUMA_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
         print(
-            "env WLUMA_LIGHT_SENSOR_BASE_PATH if set will be use as output to play with wluma"
+            "env WLUMA_AMBIENT_LIGHT_SENSOR_EMULATOR_STRATEGY can be use for 'strategy'"
+        )
+        print(
+            "env WLUMA_AMBIENT_LIGHT_SENSOR_BASE_PATH if set will be use as output to play with wluma"
         )
 
 
