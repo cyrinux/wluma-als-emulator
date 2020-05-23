@@ -154,10 +154,10 @@ class FakeSensor:
 
     def run(self):
         while True:
-            lux = self.strategy.loop()
-            if lux != self.prev_lux:
-                self.prev_lux = lux
-                self.write_lux(lux)
+            self.strategy.loop()
+            if self.strategy.lux != self.prev_lux:
+                self.prev_lux = self.strategy.lux
+                self.write_lux(self.strategy.lux)
 
             # wait
             sleep(self.config.sleep_time)
