@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 
 import getopt
 import math
@@ -12,23 +14,23 @@ from datetime import datetime, time
 from pathlib import Path
 from time import sleep
 
+VERSION = "1.0.0"
 FAKE_SENSOR = "/tmp/fake-devices"
-INPUT = "/dev/video0"
 LOCKFILE = "fake-light-sensor.lock"
-SLEEP_MODE = "lux"
-SLEEP_TIME = 30
-STRATEGY = "webcam"
+INPUT = "/dev/video0"
+DEFAULT_SLEEP_MODE = "lux"
+DEFAULT_SLEEP_TIME = 30
+DEFAULT_STRATEGY = "webcam"
 
 SLEEP_PER_PERIODS = {
     300: [[0, 6], [20, 23]],
-    15: [[12, 15]],
+    15: [[6, 19]],
 }
 
 
 class WebcamStrategy:
     def __init__(self, config):
         self.config = config
-        self.lux = self.prev_lux = None
 
         self.capture_command = [
             "ffmpeg",
@@ -36,10 +38,12 @@ class WebcamStrategy:
             "-loglevel",
             "panic",
             "-i",
-            config.input,
+            self.config.input,
             "-vframes",
             "1",
         ]
+        if self.config.verbose:
+            print("Sleep mode: {} will be use".format(self.config.sleep_mode))
 
     def calculate(self, screenshot_cmd):
         f, path = tempfile.mkstemp()
@@ -63,51 +67,41 @@ class WebcamStrategy:
         return int(100 * (result / 255))
 
     def loop(self):
+        # get sensor value
+        try:
+            self.lux = self.calculate(self.capture_command)
+        except subprocess.CalledProcessError as e:
+            raise ("Can't get lux, bad input device?\n{}".format(e))
+            sys.exit(1)
+
+        if self.config.sleep_mode == "fixed":
+            self.sleep_time = self.config.sleep_time
+        elif self.config.sleep_mode == "periods":
+            self.sleep_time = self.config.get_sleep_by_periods()
+        elif self.config.sleep_mode == "lux":
+            # less refresh in the dark
+            self.sleep_time = (
+                (self.config.sleep_time * 2)
+                if self.lux <= 10
+                else self.config.sleep_time
+            )
+
+            # more refresh if very bright
+            self.sleep_time = (
+                (self.config.sleep_time * 0.5)
+                if self.lux >= 80
+                else self.config.sleep_time
+            )
+
         if self.config.verbose:
-            print("Sleep mode: {} will be use".format(self.config.sleep_mode))
-
-        while True:
-            # get sensor value
-            try:
-                self.lux = self.calculate(self.capture_command)
-            except subprocess.CalledProcessError as e:
-                raise ("Can't get lux, bad input device?\n{}".format(e))
-                sys.exit(1)
-
-            if self.lux != self.prev_lux:
-                self.prev_lux = self.lux
-                self.config.write_lux(self.lux)
-
-            if self.config.sleep_mode == "fixed":
-                sleep_time = self.config.sleep_time
-            elif self.config.sleep_mode == "periods":
-                sleep_time = self.config.get_sleep_by_periods()
-            elif self.config.sleep_mode == "lux":
-                # less refresh in the dark
-                sleep_time = (
-                    (self.config.sleep_time * 2)
-                    if self.lux <= 10
-                    else self.config.sleep_time
-                )
-
-                # more refresh if very bright
-                sleep_time = (
-                    (self.config.sleep_time * 0.5)
-                    if self.lux >= 80
-                    else self.config.sleep_time
-                )
-
-            if self.config.verbose:
-                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
-
-            # wait
-            sleep(sleep_time)
+            print("lux={} | waiting {} seconds...".format(self.lux, self.sleep_time))
 
 
 class TimeStrategy:
     def __init__(self, config):
         self.config = config
-        self.lux = self.prev_lux = None
+        self.lux = None
+        self.sleep_time = self.config.sleep_time
 
     def calculate(self):
         """
@@ -130,91 +124,42 @@ class TimeStrategy:
         return int(lux)
 
     def loop(self):
-        while True:
-            self.lux = self.calculate()
-            if self.lux != self.prev_lux:
-                self.prev_lux = self.lux
-                self.config.write_lux(self.lux)
+        self.lux = self.calculate()
 
-            sleep_time = self.config.sleep_time
-
-            if self.config.verbose:
-                print("lux={} | waiting {} seconds...".format(self.lux, sleep_time))
-
-            # wait
-            sleep(sleep_time)
+        if self.config.verbose:
+            print("lux={} | waiting {} seconds...".format(self.lux, self.sleep_time))
 
 
 class FakeSensor:
     def __init__(self, strategy):
         self.config = config
         self.strategy = strategy
-        self.config.create_fake_sensor()
-
-    def run(self):
-        self.strategy.loop()
-
-
-class Config:
-    def __init__(self):
-        # test params
-        try:
-            opts, args = getopt.getopt(
-                sys.argv[1:],
-                "i:o:s:t:hv",
-                ["input=", "output=", "sleep=", "strategy=", "help", "verbose"],
-            )
-        except getopt.GetoptError as err:
-            print(err)
-            self.usage()
-            sys.exit(2)
-
-        # default values
-        self.input = INPUT
-        self.sleep_time = SLEEP_TIME
-        self.sleep_mode = SLEEP_MODE
-        self.verbose = False
-        self.strategy = STRATEGY
-        self.output_basedir = (
-            os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
-            + "/light-sensor"
-        )
-        self.strategy = os.environ.get("FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY", STRATEGY)
-
-        # get params values
-        for o, a in opts:
-            if o in ("-v", "--verbose"):
-                self.verbose = True
-            elif o in ("-t", "--strategy"):
-                self.strategy = a
-            elif o in ("-s", "--sleep"):
-                self.get_sleep_params(a)
-            elif o in ("-i", "--input"):
-                self.input = a
-            elif o in ("-o", "--output"):
-                self.output_basedir = a
-            elif o in ("-h", "--help"):
-                self.usage()
-                sys.exit(0)
-            else:
-                assert False, "unhandled option, see --help"
-
-        # create fake /sys dir
-        Path(self.output_basedir).mkdir(parents=True, exist_ok=True)
-
-        # lock
-        if os.path.isfile(self.lockfile()):
-            print("{} is already running!".format(os.path.basename(__file__)))
-            sys.exit(2)
+        self.create_fake_sensor()
+        self.prev_lux = None
+        self.lux = None
 
         # on exit do
         signal.signal(signal.SIGTERM, self.exit_handler)
         signal.signal(signal.SIGINT, self.exit_handler)
 
+        # lock
+        if os.path.isfile(self.lockfile()):
+            print("{} is already running!".format(os.path.basename(__file__)))
+            sys.exit(2)
         Path(self.lockfile()).touch()
 
+    def run(self):
+        while True:
+            lux = self.strategy.loop()
+            if lux != self.prev_lux:
+                self.prev_lux = lux
+                self.write_lux(lux)
+
+            # wait
+            sleep(self.config.sleep_time)
+
     def lockfile(self):
-        return self.output_basedir + "/" + LOCKFILE
+        return self.config.output_basedir + "/" + LOCKFILE
 
     def cleanup(self):
         os.remove(self.lockfile())
@@ -225,16 +170,19 @@ class Config:
         sys.exit(0)
 
     def create_fake_sensor(self):
-        als_raw = self.output_basedir + "/in_illuminance_raw"
-        als_name = self.output_basedir + "/name"
+        # create fake /sys dir
+        Path(self.config.output_basedir).mkdir(parents=True, exist_ok=True)
+
+        als_raw = self.config.output_basedir + "/in_illuminance_raw"
+        als_name = self.config.output_basedir + "/name"
 
         if not os.path.isfile(als_name):
             name = open(als_name, "w")
             name.write("als")
             name.flush()
 
-        if self.verbose:
-            print("input: {}, output: {}".format(self.input, als_raw))
+        if self.config.verbose:
+            print("input: {}, output: {}".format(self.config.input, als_raw))
 
         self.sensor = open(als_raw, "w+")
 
@@ -245,6 +193,67 @@ class Config:
         self.sensor.write(str(lux))
         self.sensor.flush()
         os.fsync(self.sensor)
+
+
+class Config:
+    def __init__(self):
+        # test params
+        try:
+            opts, args = getopt.getopt(
+                sys.argv[1:],
+                "i:o:s:t:hvV",
+                [
+                    "input=",
+                    "output=",
+                    "sleep=",
+                    "strategy=",
+                    "help",
+                    "verbose",
+                    "version",
+                ],
+            )
+        except getopt.GetoptError as err:
+            print(err)
+            self.usage()
+            sys.exit(2)
+
+        # default values
+        self.input = INPUT
+        self.sleep_mode = DEFAULT_SLEEP_MODE
+        self.sleep_time = DEFAULT_SLEEP_TIME
+        self.strategy = DEFAULT_STRATEGY
+        self.verbose = False
+        self.output_basedir = (
+            os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
+            + "/light-sensor"
+        )
+        self.strategy = os.environ.get(
+            "FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY", DEFAULT_STRATEGY
+        )
+
+        # get params values
+        for o, a in opts:
+            if o in ("-v", "--verbose"):
+                self.verbose = True
+            elif o in ("-i", "--input"):
+                self.input = a
+            elif o in ("-t", "--strategy"):
+                self.strategy = a
+            elif o in ("-s", "--sleep"):
+                self.get_sleep_params(a)
+            elif o in ("-o", "--output"):
+                self.output_basedir = a
+            elif o in ("-h", "--help"):
+                self.usage()
+                sys.exit(0)
+            elif o in ("-V", "--version"):
+                print("version {}".format(VERSION))
+                sys.exit(0)
+            else:
+                assert False, "unhandled option, see --help"
+
+            if self.strategy == "time":
+                self.input = "time based"
 
     def get_sleep_params(self, arg):
         if arg == "periods":
@@ -257,12 +266,12 @@ class Config:
                 self.sleep_time = int(arg)
                 self.sleep_mode = "fixed"
             except:
+                self.sleep_time = int(DEFAULT_SLEEP_TIME)
                 print(
                     "sleep must be an int or 'lux' or 'periods', default to {} seconds.".format(
-                        SLEEP_TIME
+                        DEFAULT_SLEEP_TIME
                     )
                 )
-                self.sleep_time = int(SLEEP_TIME)
 
     def get_sleep_by_periods(self):
         hour = datetime.now().hour
@@ -304,5 +313,5 @@ if __name__ == "__main__":
 
     except Exception as e:
         print("Got exception, aborting: ", e)
-        config.cleanup()
+        fals.cleanup()
         sys.exit(3)
