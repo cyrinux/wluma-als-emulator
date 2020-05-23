@@ -13,7 +13,7 @@ from datetime import datetime, time
 from pathlib import Path
 from time import sleep
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 FAKE_SENSOR = "/tmp/fake-devices"
 LOCKFILE = "wluma-als-emulator.lock"
 INPUT = "/dev/video0"

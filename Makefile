@@ -1,6 +1,6 @@
 BIN := wluma-als-emulator
 PROJECT := wluma-als-emulator
-VERSION := 1.0.0
+VERSION := 1.1.0
 
 PREFIX ?= /usr
 LIB_DIR = $(DESTDIR)$(PREFIX)/lib
