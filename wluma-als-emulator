@@ -15,7 +15,7 @@ from time import sleep
 
 VERSION = "1.0.0"
 FAKE_SENSOR = "/tmp/fake-devices"
-LOCKFILE = "fake-light-sensor.lock"
+LOCKFILE = "wluma-als-emulator.lock"
 INPUT = "/dev/video0"
 DEFAULT_SLEEP_MODE = "lux"
 DEFAULT_SLEEP_TIME = 30
@@ -183,7 +183,7 @@ class FakeSensor:
         os.remove(self.lockfile())
 
     def exit_handler(self, signal, frame):
-        print("Receive signal {}, shutdown fake sensor...".format(signal))
+        print("Receive signal {}, shutdown ALS emulator...".format(signal))
         self.cleanup()
         sys.exit(0)
 
@@ -246,7 +246,7 @@ class Config:
             + "/light-sensor"
         )
         self.strategy = os.environ.get(
-            "FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY", DEFAULT_STRATEGY
+            "WLUMA_AMBIENT_LIGHT_SENSOR_STRATEGY", DEFAULT_STRATEGY
         )
 
         # get params values
@@ -302,13 +302,13 @@ class Config:
 
     def usage(self):
         print(
-            """{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor]
+            """{} [--input=/dev/video0] [--output=/tmp/fake-devicse]
                [--sleep=10/periods] [--strategy=webcam/time] [--verbose] [--version]\n""".format(
                 os.path.basename(__file__)
             )
         )
 
-        print("env FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
+        print("env WLUMA_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
         print(
             "env WLUMA_LIGHT_SENSOR_BASE_PATH if set will be use as output to play with wluma"
         )

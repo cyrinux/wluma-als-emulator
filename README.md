@@ -1,4 +1,4 @@
-# Fake ambient light sensor
+# Wluma Ambiance Light Sensor Emulator
 
 This is a fake ambient light sensor for those who don't get one built into in their laptop.
 
@@ -18,10 +18,10 @@ The following modes are available:
 
 ## Installation
 
-On Arch Linux, use AUR package `fake-light-sensor-git`. (not published yet)
+On Arch Linux, use AUR packages `wluma-als-emulator` or `wluma-als-emulator-git`.
 
 ## Usage
 
 ```bash
-fake-light-sensor [--help]
+wluma-als-emulator [--help]
 ```
