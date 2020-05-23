@@ -21,6 +21,10 @@ DEFAULT_SLEEP_MODE = "lux"
 DEFAULT_SLEEP_TIME = 30
 DEFAULT_STRATEGY = "webcam"
 
+# If lux from webcam change too much
+# raise probes
+WEBCAM_PROBES = 1
+
 WEBCAM_SLEEP_PER_PERIODS = {
     300: [[0, 6], [20, 23]],
     15: [[6, 19]],
@@ -48,7 +52,7 @@ class WebcamStrategy:
         if self.config.verbose:
             print("Sleep mode: {} will be use".format(self.config.sleep_mode))
 
-    def calculate(self, screenshot_cmd):
+    def get_brighness(self, screenshot_cmd):
         f, path = tempfile.mkstemp()
         os.close(f)
         os.remove(path)
@@ -68,7 +72,15 @@ class WebcamStrategy:
         os.remove(path)
         return int(100 * (result / 255))
 
+    def calculate(self):
+        results = []
+        for _ in range(0, WEBCAM_PROBES):
+            results.append(self.get_brighness(self.capture_command))
+            sleep(1)
+        return int(sum(results) / float(len(results)))
+
     def get_sleep_time(self):
+        self.sleep_time = self.config.sleep_time
         if self.config.sleep_mode == "fixed":
             self.sleep_time = self.config.sleep_time
         elif self.config.sleep_mode == "periods":
@@ -87,11 +99,13 @@ class WebcamStrategy:
                 if self.lux >= 80
                 else self.config.sleep_time
             )
+        if WEBCAM_PROBES > 1:
+            self.sleep_time = self.sleep_time - WEBCAM_PROBES
 
     def loop(self):
         # get sensor value
         try:
-            self.lux = self.calculate(self.capture_command)
+            self.lux = self.calculate()
         except subprocess.CalledProcessError as e:
             raise ("Can't get lux, bad input device?\n{}".format(e))
 
