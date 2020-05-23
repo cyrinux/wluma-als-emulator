@@ -129,9 +129,9 @@ class TimeStrategy:
         current time 11am should be (100 - (43200 - 40200) / 432) = 93% of lux
         """
         midday_in_seconds = 43200
-        utcnow = datetime.utcnow()
-        midnight_utc = datetime.combine(utcnow.date(), time(0))
-        now = utcnow - midnight_utc
+        datenow = datetime.now()
+        midnight = datetime.combine(datenow.date(), time(0))
+        now = datenow - midnight
         now_in_seconds = now.seconds
         # from midnigh to midday lux up
         if now_in_seconds > midday_in_seconds:
@@ -242,11 +242,11 @@ class Config:
         self.strategy = DEFAULT_STRATEGY
         self.verbose = False
         self.output_basedir = (
-            os.environ.get("WLUMA_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
+            os.environ.get("WLUMA_AMBIENT_LIGHT_SENSOR_BASE_PATH", FAKE_SENSOR)
             + "/light-sensor"
         )
         self.strategy = os.environ.get(
-            "WLUMA_AMBIENT_LIGHT_SENSOR_STRATEGY", DEFAULT_STRATEGY
+            "WLUMA_AMBIENT_LIGHT_SENSOR_EMULATOR_STRATEGY", DEFAULT_STRATEGY
         )
 
         # get params values
@@ -308,9 +308,11 @@ class Config:
             )
         )
 
-        print("env WLUMA_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
         print(
-            "env WLUMA_LIGHT_SENSOR_BASE_PATH if set will be use as output to play with wluma"
+            "env WLUMA_AMBIENT_LIGHT_SENSOR_EMULATOR_STRATEGY can be use for 'strategy'"
+        )
+        print(
+            "env WLUMA_AMBIENT_LIGHT_SENSOR_BASE_PATH if set will be use as output to play with wluma"
         )
 
 
