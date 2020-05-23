@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-
 import getopt
 import math
 import os
@@ -22,7 +21,7 @@ DEFAULT_SLEEP_MODE = "lux"
 DEFAULT_SLEEP_TIME = 30
 DEFAULT_STRATEGY = "webcam"
 
-SLEEP_PER_PERIODS = {
+WEBCAM_SLEEP_PER_PERIODS = {
     300: [[0, 6], [20, 23]],
     15: [[6, 19]],
 }
@@ -31,6 +30,7 @@ SLEEP_PER_PERIODS = {
 class WebcamStrategy:
     def __init__(self, config):
         self.config = config
+        self.lux = None
 
         self.capture_command = [
             "ffmpeg",
@@ -42,6 +42,9 @@ class WebcamStrategy:
             "-vframes",
             "1",
         ]
+
+        self.get_sleep_time()
+
         if self.config.verbose:
             print("Sleep mode: {} will be use".format(self.config.sleep_mode))
 
@@ -55,7 +58,6 @@ class WebcamStrategy:
             subprocess.run([*screenshot_cmd, path], check=True)
         except FileNotFoundError as e:
             raise ("The binary is not found?\n{}".format(e))
-            sys.exit(1)
 
         result = None
         with Image.open(path) as im:
@@ -66,19 +68,12 @@ class WebcamStrategy:
         os.remove(path)
         return int(100 * (result / 255))
 
-    def loop(self):
-        # get sensor value
-        try:
-            self.lux = self.calculate(self.capture_command)
-        except subprocess.CalledProcessError as e:
-            raise ("Can't get lux, bad input device?\n{}".format(e))
-            sys.exit(1)
-
+    def get_sleep_time(self):
         if self.config.sleep_mode == "fixed":
             self.sleep_time = self.config.sleep_time
         elif self.config.sleep_mode == "periods":
             self.sleep_time = self.config.get_sleep_by_periods()
-        elif self.config.sleep_mode == "lux":
+        elif self.config.sleep_mode == "lux" and self.lux:
             # less refresh in the dark
             self.sleep_time = (
                 (self.config.sleep_time * 2)
@@ -92,6 +87,15 @@ class WebcamStrategy:
                 if self.lux >= 80
                 else self.config.sleep_time
             )
+
+    def loop(self):
+        # get sensor value
+        try:
+            self.lux = self.calculate(self.capture_command)
+        except subprocess.CalledProcessError as e:
+            raise ("Can't get lux, bad input device?\n{}".format(e))
+
+        self.get_sleep_time()
 
         if self.config.verbose:
             print("lux={} | waiting {} seconds...".format(self.lux, self.sleep_time))
@@ -199,7 +203,7 @@ class Config:
     def __init__(self):
         # test params
         try:
-            opts, args = getopt.getopt(
+            opts, _ = getopt.getopt(
                 sys.argv[1:],
                 "i:o:s:t:hvV",
                 [
@@ -232,21 +236,21 @@ class Config:
         )
 
         # get params values
-        for o, a in opts:
-            if o in ("-v", "--verbose"):
+        for opt, arg in opts:
+            if opt in ("-v", "--verbose"):
                 self.verbose = True
-            elif o in ("-i", "--input"):
-                self.input = a
-            elif o in ("-t", "--strategy"):
-                self.strategy = a
-            elif o in ("-s", "--sleep"):
-                self.get_sleep_params(a)
-            elif o in ("-o", "--output"):
-                self.output_basedir = a
-            elif o in ("-h", "--help"):
+            elif opt in ("-i", "--input"):
+                self.input = arg
+            elif opt in ("-t", "--strategy"):
+                self.strategy = arg
+            elif opt in ("-s", "--sleep"):
+                self.get_sleep_params(arg)
+            elif opt in ("-o", "--output"):
+                self.output_basedir = arg
+            elif opt in ("-h", "--help"):
                 self.usage()
                 sys.exit(0)
-            elif o in ("-V", "--version"):
+            elif opt in ("-V", "--version"):
                 print("version {}".format(VERSION))
                 sys.exit(0)
             else:
@@ -258,7 +262,6 @@ class Config:
     def get_sleep_params(self, arg):
         if arg == "periods":
             self.sleep_mode = "periods"
-            self.sleep_time = self.get_sleep_by_periods()
         elif arg == "lux":
             self.sleep_mode = "lux"
         else:
@@ -276,8 +279,8 @@ class Config:
     def get_sleep_by_periods(self):
         hour = datetime.now().hour
         sleep_time = 30
-        for p in SLEEP_PER_PERIODS:
-            for r in SLEEP_PER_PERIODS[p]:
+        for p in WEBCAM_SLEEP_PER_PERIODS:
+            for r in WEBCAM_SLEEP_PER_PERIODS[p]:
                 if hour in range(r[0], r[1]):
                     sleep_time = p
                     break
@@ -286,12 +289,15 @@ class Config:
     def usage(self):
         print(
             """{} [--input=/dev/video0] [--output=/tmp/fake_light_sensor]
-               [--sleep=10/periods] [--strategy=webcam/time] [--verbose]\n""".format(
+               [--sleep=10/periods] [--strategy=webcam/time] [--verbose] [--version]\n""".format(
                 os.path.basename(__file__)
             )
         )
 
         print("env FAKE_AMBIENT_LIGHT_SENSOR_STRATEGY can be use for 'strategy'")
+        print(
+            "env WLUMA_LIGHT_SENSOR_BASE_PATH if set will be use as output to play with wluma"
+        )
 
 
 if __name__ == "__main__":
