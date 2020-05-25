@@ -32,12 +32,14 @@ class SolarApi:
 
     def time_to_localtime(self, data):
         """
-        Convert from UTC to localtime a format like "08:42:01 PM"
+        Convert from a time UTC to a datetime in locale TZ a format like "08:42:01 PM"
         """
-        return (
-            datetime.strptime(data, "%H:%M:%S %p")
+        return datetime.combine(
+            datetime.now().date(),
+            datetime.strptime(data, "%I:%M:%S %p")
             .replace(tzinfo=self.config.from_zone)
             .astimezone(self.config.to_zone)
+            .time(),
         )
 
     def time_in_seconds(self, data):

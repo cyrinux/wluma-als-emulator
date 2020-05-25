@@ -36,7 +36,7 @@ class NoonStrategy:
         if self.config.verbose:
             print(
                 "lux={} | noon={} | waiting {} seconds...".format(
-                    int(lux), solar_noon_date, self.sleep_time
+                    round(lux, 3), solar_noon_date, self.sleep_time
                 )
             )
         return int(lux)
