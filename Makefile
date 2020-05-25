@@ -1,6 +1,6 @@
 BIN := wluma-als-emulator
 PROJECT := wluma-als-emulator
-VERSION := 1.1.0
+VERSION := 1.2.0
 
 PREFIX ?= /usr
 LIB_DIR = $(DESTDIR)$(PREFIX)/lib
@@ -16,10 +16,10 @@ clean:
 
 .PHONY: install
 install:
-	install -Dm755 -t "$(BIN_DIR)/" $(BIN)
+	python3 setup.py install  --root="$(DESTDIR)/" --optimize=1 --skip-build
 	install -Dm644 -t "$(LIB_DIR)/systemd/user" "$(BIN).service"
 	install -Dm644 -t "$(SHARE_DIR)/licenses/$(BIN)/" LICENSE
-	install -Dm644 -t "$(SHARE_DIR)/doc/$(BIN)/" README.md
+	install -Dm644 -t "$(SHARE_DIR)/doc/$(BIN)/" README.* docs/*
 
 .PHONY: dist
 dist:
@@ -27,3 +27,11 @@ dist:
 	git archive -o "dist/$(PROJECT)-$(VERSION).tar.gz" --format tar.gz --prefix "$(PROJECT)-$(VERSION)/" "$(VERSION)"
 	gpg --detach-sign --armor "dist/$(PROJECT)-$(VERSION).tar.gz"
 	rm -f "dist/$(PROJECT)-$(VERSION).tar.gz"
+
+.PHONY: init
+init:
+	pip install -r requirements.txt
+
+.PHONY: build
+build:
+	python3 setup.py build

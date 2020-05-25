@@ -1,0 +1,6 @@
+recursive-include wluma_als_emulator *.py
+recursive-include docs *.rst *.md *.txt *.py
+
+include LICENSE
+include README.rst
+include fastentrypoints.py
