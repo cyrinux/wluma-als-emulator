@@ -26,3 +26,20 @@ Releases are signed with my PGP key: [FC9B1319726657D3](https://levis.name/pgp_k
 ```bash
 wluma-als-emulator [--help]
 ```
+
+# Developement
+
+## Run
+
+To make a quick test from a virtualenv
+
+```bash
+make ARGS="--help" run
+make ARGS="-t noon -s 3" run
+```
+
+## Tests
+
+```bash
+tox
+```

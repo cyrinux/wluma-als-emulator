@@ -9,7 +9,7 @@ BIN_DIR = $(DESTDIR)$(PREFIX)/bin
 SHARE_DIR = $(DESTDIR)$(PREFIX)/share
 
 run: ## Install and test in a virtualenv
-	./run.sh
+	./run.sh $(ARGS)
 
 .PHONY: init
 init: ## Install requirements
