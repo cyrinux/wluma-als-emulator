@@ -13,8 +13,11 @@ The following modes are available:
 
 ## Dependencies
 
+See `requirements.txt`:
+
 - `ffmpeg` (needed for webcam mode)
 - `python-pillow` (needed for webcam mode)
+- `python-requests` (needed for requests api)
 
 ## Installation
 
@@ -24,7 +27,7 @@ Releases are signed with my PGP key: [FC9B1319726657D3](https://levis.name/pgp_k
 ## Usage
 
 ```bash
-wluma-als-emulator [--help]
+wluma-als-emulator [-h|--help]
 ```
 
 # Developement

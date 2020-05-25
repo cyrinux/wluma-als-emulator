@@ -113,10 +113,9 @@ class Config:
 
     def usage(self):
         print(
-            """{} [-i|--input=/dev/video0] [-o|--output=/tmp/fake-devices]
-               [-s|--sleep=10/periods] [-t|--strategy=webcam/time/noon/daylight] [-v|--verbose] [-V|--version]\n""".format(
-                os.path.basename(__file__)
-            )
+            """wluma-als-sensor [-i|--input=/dev/video0] [-o|--output=/tmp/fake-devices]\n
+               [-s|--sleep=10/periods] [-t|--strategy=webcam/time/noon/daylight]\n
+               [-v|--verbose] [-V|--version] [-h|--help]\n"""
         )
 
         print(
