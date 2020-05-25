@@ -9,6 +9,11 @@ API_URL = "https://api.sunrise-sunset.org/json"
 
 
 class SolarApi:
+    """
+    Fetch informations related to the solar rotation around the earth
+    from https://sunrise-sunset.org/
+    """
+
     def __init__(self, config):
         self.config = config
         self.previous_day = None

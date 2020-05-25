@@ -3,14 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to wluma-als-emulator's documentation!
-==============================================
+
+Ambient Light Sensor Emulator for wluma documentation
+=====================================================
+
+This is an ambient light sensor emulator that can run severals strategy to get lux.
+Mainly done for wluma from @maximbaz.
+
+Resources:
+`wluma-als-emulator <https://github.com/cyrinux/wluma-als-simulator>`_.
+`wluma <https://github.com/maximbaz/wluma>`_.
+
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-
+   readme
 
 Indices and tables
 ==================
@@ -18,3 +27,38 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+Strategies
+==========
+
+.. autoclass:: wluma_als_emulator.strategies.webcam_strategy.WebcamStrategy
+   :members:
+   :inherited-members:
+
+.. autoclass:: wluma_als_emulator.strategies.noon_strategy.NoonStrategy
+   :members:
+   :inherited-members:
+
+.. autoclass:: wluma_als_emulator.strategies.time_strategy.TimeStrategy
+   :members:
+   :inherited-members:
+
+.. autoclass:: wluma_als_emulator.strategies.daylight_strategy.DayLightStrategy
+   :members:
+   :inherited-members:
+
+
+Core
+====
+
+.. autoclass:: wluma_als_emulator.core.sensor.Sensor
+   :members:
+   :inherited-members:
+
+Helpers
+=======
+
+.. autoclass:: wluma_als_emulator.helpers.solar_api.SolarApi
+   :members:
+   :inherited-members:
