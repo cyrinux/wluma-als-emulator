@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 import fastentrypoints  # noqa f401
 
 
-with open("docs/DESCRIPTION.rst") as f:
+with open("README.rst") as f:
     description = f.read()
 
 with open("LICENSE") as f:
@@ -29,5 +29,5 @@ setup(
     packages=find_packages(exclude=("tests", "docs")),
     install_requires=[],
     entry_points={"console_scripts": ["wluma-als-emulator = wluma_als_emulator:main"]},
-    python_requires=">=3.7",
+    python_requires=">=3.8",
 )

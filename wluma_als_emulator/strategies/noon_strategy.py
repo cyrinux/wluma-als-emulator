@@ -20,10 +20,9 @@ class NoonStrategy:
 
         solar_noon = self.api.get("solar_noon")
         solar_noon_in_seconds = self.api.get("solar_noon_in_seconds")
-        solar_noon_date = datetime.combine(datetime.now().date(), solar_noon.time())
 
         # get the time 12h before the noon
-        now = datetime.now() - (solar_noon_date - timedelta(hours=12))
+        now = datetime.now() - (solar_noon - timedelta(hours=12))
         now_in_seconds = now.seconds
 
         # from 12h before the noon to noon
@@ -36,7 +35,7 @@ class NoonStrategy:
         if self.config.verbose:
             print(
                 "lux={} | noon={} | waiting {} seconds...".format(
-                    round(lux, 3), solar_noon_date, self.sleep_time
+                    round(lux, 3), solar_noon, self.sleep_time
                 )
             )
         return int(lux)
