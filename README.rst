@@ -5,7 +5,7 @@ This is a fake ambient light sensor for those who don’t get one built
 into in their laptop.
 
 Mainly done for `wluma <https://github.com/maximbaz/wluma>`__ and based
-on [@maximbaz](https://github.com/maximbaz)‘s work.’ ``wluma`` is a
+on `@maximbaz <https://github.com/maximbaz>`__'s work. ``wluma`` is a
 great project that sets screen brighness based on screen contents and
 ambient light around you.
 
@@ -13,7 +13,11 @@ The following modes are available:
 
 -  ``webcam``: takes a webcam capture with ffmpeg and approximates
    ambient light value out of image brightness.
--  ``time``: approximates ambient light value based on the current time.
+-  ``time``: approximates ambient light value based on the current time, all the day.
+-  ``noon``: approximates ambient light value based on the current time with the noon as reference.
+-  ``daylight``: approximates ambient light value based on the solar phases, twilight.
+
+See `readthedoc <https://wluma-als-emulator.readthedocs.io/en/latest/>`__ for more informations.
 
 Dependencies
 ------------
@@ -57,3 +61,4 @@ Tests
 .. code:: bash
 
    tox
+
