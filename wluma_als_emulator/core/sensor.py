@@ -33,7 +33,7 @@ class Sensor:
         Start a loop with the choosen strategy
         """
         while True:
-            self.strategy.loop()
+            self.strategy.run()
             if self.strategy.lux != self.prev_lux:
                 self.prev_lux = self.strategy.lux
                 self.write_lux(self.strategy.lux)

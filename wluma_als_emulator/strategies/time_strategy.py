@@ -29,7 +29,7 @@ class TimeStrategy:
             lux = now_in_seconds * 100 / midday_in_seconds
         return int(lux)
 
-    def loop(self):
+    def run(self):
         self.lux = self.calculate()
 
         if self.config.verbose:

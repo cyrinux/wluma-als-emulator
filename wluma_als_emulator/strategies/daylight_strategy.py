@@ -73,5 +73,5 @@ class DayLightStrategy:
 
         return int(lux)
 
-    def loop(self):
+    def run(self):
         self.lux = self.calculate()

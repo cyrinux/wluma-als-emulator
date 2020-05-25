@@ -8,8 +8,8 @@ from setuptools import setup, find_packages
 import fastentrypoints  # noqa f401
 
 
-with open("README.rst") as f:
-    readme = f.read()
+with open("docs/DESCRIPTION.rst") as f:
+    description = f.read()
 
 with open("LICENSE") as f:
     license = f.read()
@@ -18,7 +18,7 @@ setup(
     name="wluma-als-emulator",
     version="1.2.0",
     description="Ambient light sensor emulator for wluma",
-    long_description=readme,
+    long_description=description,
     long_description_content_type="text/x-rst",
     author="Cyril Levis",
     author_email="alse@levis.name",

@@ -93,7 +93,6 @@ class SolarApi:
         )
 
         r = requests.get(url)
-
         if r.status_code != 200:
             print(
                 "Can't get api results from: {}, status code {}".format(
@@ -101,5 +100,4 @@ class SolarApi:
                 )
             )
             return self.data
-
         return json.loads(r.text)

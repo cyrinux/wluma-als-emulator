@@ -92,7 +92,7 @@ class WebcamStrategy:
         if WEBCAM_PROBES > 1:
             self.sleep_time = self.sleep_time - WEBCAM_PROBES
 
-    def loop(self):
+    def run(self):
         # get sensor value
         try:
             self.lux = self.calculate()
