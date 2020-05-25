@@ -113,8 +113,8 @@ class Config:
 
     def usage(self):
         print(
-            """{} [--input=/dev/video0] [--output=/tmp/fake-devicse]
-               [--sleep=10/periods] [--strategy=webcam/time/noon/daylight] [--verbose] [--version]\n""".format(
+            """{} [-i|--input=/dev/video0] [-o|--output=/tmp/fake-devices]
+               [-s|--sleep=10/periods] [-t|--strategy=webcam/time/noon/daylight] [-v|--verbose] [-V|--version]\n""".format(
                 os.path.basename(__file__)
             )
         )
