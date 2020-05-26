@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import getopt
 import os
 import os.path
@@ -76,7 +75,7 @@ class Config:
                 self.usage()
                 sys.exit(0)
             elif opt in ("-V", "--version"):
-                print("version {}".format(VERSION))
+                print(f"version {VERSION}")
                 sys.exit(0)
             else:
                 assert False, "unhandled option, see --help"

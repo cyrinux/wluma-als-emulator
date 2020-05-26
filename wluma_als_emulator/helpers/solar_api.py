@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import pprint
 from datetime import datetime
 import json
@@ -25,6 +23,7 @@ class SolarApi:
         """
         current_day = datetime.now().date()
         if self.previous_day != current_day:
+            print("Fetching API data")
             try:
                 self.data = self.get_json()
                 if self.config.verbose:

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from datetime import datetime, time
 
 from ..helpers.solar_api import SolarApi
@@ -15,6 +14,7 @@ class DayLightStrategy:
         self.api = SolarApi(config)
 
     def calculate(self):
+        # refresh data api
         self.api.fetch()
 
         civil_twilight_begin_in_seconds = self.api.get(

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from datetime import datetime, time
 
 
@@ -33,4 +31,4 @@ class TimeStrategy:
         self.lux = self.calculate()
 
         if self.config.verbose:
-            print("lux={} | waiting {} seconds...".format(self.lux, self.sleep_time))
+            print(f"lux={self.lux} | waiting {self.sleep_time} seconds...")

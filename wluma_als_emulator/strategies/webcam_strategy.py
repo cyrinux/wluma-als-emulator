@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import math
 import os
 import os.path
@@ -30,7 +28,7 @@ class WebcamStrategy:
         self.get_sleep_time()
 
         if self.config.verbose:
-            print("Sleep mode: {} will be use".format(self.config.sleep_mode))
+            print(f"Sleep mode: {self.config.sleep_mode} will be use")
 
     def get_brighness(self, screenshot_cmd):
         """
@@ -44,7 +42,7 @@ class WebcamStrategy:
         try:
             subprocess.run([*screenshot_cmd, path], check=True)
         except FileNotFoundError as e:
-            raise ("The binary is not found?\n{}".format(e))
+            raise (f"The binary is not found?\n{e}")
 
         result = None
         with Image.open(path) as im:
@@ -97,9 +95,9 @@ class WebcamStrategy:
         try:
             self.lux = self.calculate()
         except subprocess.CalledProcessError as e:
-            raise ("Can't get lux, bad input device?\n{}".format(e))
+            raise (f"Can't get lux, bad input device?\n{e}")
 
         self.get_sleep_time()
 
         if self.config.verbose:
-            print("lux={} | waiting {} seconds...".format(self.lux, self.sleep_time))
+            print(f"lux={self.lux} | waiting {self.sleep_time} seconds...")

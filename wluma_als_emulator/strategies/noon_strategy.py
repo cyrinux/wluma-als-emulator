@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from datetime import datetime, timedelta
 from ..helpers.solar_api import SolarApi
 

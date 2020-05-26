@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 import signal
 import os.path
 import os
@@ -48,7 +46,7 @@ class Sensor:
         os.remove(self.lockfile())
 
     def exit_handler(self, signal, _):
-        print("Receive signal {}, shutdown ALS emulator...".format(signal))
+        print(f"Receive signal {signal}, shutdown ALS emulator...")
         self.cleanup()
         sys.exit(0)
 
@@ -68,7 +66,7 @@ class Sensor:
             name.flush()
 
         if self.config.verbose:
-            print("input: {}, output: {}".format(self.config.input, als_raw))
+            print(f"input: {self.config.input}, output: {als_raw}")
 
         self.sensor = open(als_raw, "w+")
 
