@@ -4,6 +4,7 @@ import os
 from time import sleep
 from pathlib import Path
 import sys
+from ..helpers.logind import SleepDetect
 
 LOCKFILE = "wluma-als-emulator.lock"
 
@@ -24,12 +25,17 @@ class Sensor:
         if os.path.isfile(self.lockfile()):
             print("{} is already running!".format(os.path.basename(__file__)))
             sys.exit(2)
+
         Path(self.lockfile()).touch()
+
+        self.sleep_detect = SleepDetect(strategy)
 
     def run(self):
         """
         Start a loop with the choosen strategy
         """
+        self.sleep_detect.run()
+
         while True:
             self.strategy.run()
             if self.strategy.lux != self.prev_lux:

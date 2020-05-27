@@ -22,8 +22,9 @@ class DbusLogindThread(threading.Thread):
                 print("System going to hibernate or sleep")
         else:
             print("System just resumed from hibernate or suspend, polling in 3s...")
-            sleep(3)
+            sleep(2)
             self.strategy.run()
+            print("Quick polling done")
 
     def run(self):
         DBusGMainLoop(set_as_default=True)
