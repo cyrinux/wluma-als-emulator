@@ -44,7 +44,7 @@ clean: ## Clean
 	rm -rf dist
 
 .PHONY: package
-package: docs service install ## Make the packag
+package: docs service install ## Make the package
 
 .PHONY: help
 help:

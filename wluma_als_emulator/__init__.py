@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+from .helpers.logind import SleepDetect
 
 
 try:
@@ -39,6 +40,9 @@ def main():
             sys.exit(1)
 
         fals = Sensor(strategy)
+        sleep_detect = SleepDetect(strategy)
+        sleep_detect.run()
+
         fals.run()
 
     except Exception as e:
