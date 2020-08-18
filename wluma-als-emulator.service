@@ -2,6 +2,7 @@
 Description=Ambient Light Sensor Emulator for Wluma
 Before=wluma.service
 PartOf=graphical-session.target
+After=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/wluma-als-emulator
