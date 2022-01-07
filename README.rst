@@ -1,6 +1,12 @@
 Ambient Light Sensor Emulator for `wluma <https://github.com/maximbaz/wluma>`__
 ===============================================================================
 
+DEPRECATED
+==========
+
+* Main goal is this project was ported in wluma itself under the config `als.webcam`, See https://github.com/maximbaz/wluma/pull/13 and https://github.com/maximbaz/wluma/issues/10.
+
+
 This is a fake ambient light sensor for those who don’t get one built
 into in their laptop.
 
@@ -61,4 +67,3 @@ Tests
 .. code:: bash
 
    tox
-
